@@ -32,6 +32,7 @@ public class Scheduler implements Runnable {
       log.info("Received: " + request);
 
 
+      // TODO: I've added this to cluster since it will be on a separate machine?
       synchronized (Cluster.lock) {
         for (Task task : request.tasks) {
           // Random first fit.

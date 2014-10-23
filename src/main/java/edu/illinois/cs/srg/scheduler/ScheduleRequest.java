@@ -8,9 +8,17 @@ import java.util.Set;
  */
 public class ScheduleRequest implements Serializable {
 
+  public long getId() {
+    return id;
+  }
+
   // Job id
   long id;
   Set<Task> tasks;
+
+  public Set<Task> getTasks() {
+    return tasks;
+  }
 
   public ScheduleRequest(long id, Set<Task> tasks) {
     this.id = id;

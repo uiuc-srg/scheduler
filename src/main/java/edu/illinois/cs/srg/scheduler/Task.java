@@ -8,9 +8,23 @@ import java.io.Serializable;
 public class Task implements Serializable {
 
   int index;
+
+  public int getIndex() {
+    return index;
+  }
+
+  public double getCpu() {
+    return cpu;
+  }
+
+  public double getMemory() {
+    return memory;
+  }
+
   double cpu;
   double memory;
 
+  //TODO: add TASK Length to the task
   public Task(int index, double cpu, double memory) {
     this.index = index;
     this.cpu = cpu;
