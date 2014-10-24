@@ -1,6 +1,6 @@
 package edu.illinois.cs.srg.scheduler;
 
-import edu.illinois.cs.srg.cluster.Cluster;
+import edu.illinois.cs.srg.cluster.SimpleClusterState;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ public class SchedulerServer {
   private static final Logger log = LoggerFactory.getLogger(SchedulerServer.class);
 
   public static void main(String args[]) throws Exception {
-    Cluster.init();
+    SimpleClusterState.init();
     SchedulerServer server = new SchedulerServer();
     server.serve();
   }
@@ -28,8 +28,8 @@ public class SchedulerServer {
       while (true) {
 
         Socket connectionSocket = welcomeSocket.accept();
-        Scheduler scheduler = new Scheduler(connectionSocket);
-        scheduler.run();
+        SimpleScheduler simpleScheduler = new SimpleScheduler(connectionSocket);
+        simpleScheduler.run();
 
       }
     } catch (Exception e) {
