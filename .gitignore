@@ -1,1 +1,9 @@
 .idea/libraries/Maven*.xml
+.idea/compiler.xml
+.idea/copyright/
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/scopes/
+.idea/vcs.xml
+.idea/workspace.xml

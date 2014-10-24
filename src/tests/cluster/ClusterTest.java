@@ -1,26 +1,24 @@
 package cluster;
 
 import com.google.common.collect.Sets;
-import edu.illinois.cs.srg.cluster.Cluster;
+import edu.illinois.cs.srg.cluster.SimpleClusterState;
 import edu.illinois.cs.srg.scheduler.ScheduleRequest;
-import edu.illinois.cs.srg.scheduler.ScheduleResponse;
 import edu.illinois.cs.srg.scheduler.Task;
 import org.junit.Test;
 
 import java.util.Set;
 
-import static org.junit.Assert.*;
-
 /**
  * Created by read on 10/23/14.
  */
+//TODO: Change this to scheduler test
 public class ClusterTest {
 
   @Test
   public void clusterShouldNotScheduleTask() {
 
     // Cluster is size 0
-    Cluster cluster = new Cluster(0);
+    SimpleClusterState simpleClusterState = new SimpleClusterState(0);
 
     Set<Task> tasks = Sets.newHashSet();
     tasks.add(new Task(0, 0.25, 0.25));
@@ -28,11 +26,11 @@ public class ClusterTest {
     long id = 1;
     ScheduleRequest req = new ScheduleRequest(id, tasks);
 
-    assertEquals("Cluster should not schedule tasks", cluster.schedule(req), false);
+    assertEquals("Cluster should not schedule tasks", simpleClusterState.schedule(req), false);
 
 
     // Cluster has only two machines and they are full
-    Cluster cluster2 = new Cluster(2);
+    SimpleClusterState simpleClusterState2 = new SimpleClusterState(2);
 
     Set<Task> tasks2 = Sets.newHashSet();
     tasks.add(new Task(0, 0.25, 0.25));
@@ -43,12 +41,12 @@ public class ClusterTest {
     long id2 = 1;
     ScheduleRequest req2 = new ScheduleRequest(id, tasks);
 
-    assertEquals("Cluster should schedule not tasks", cluster2.schedule(req2), false);
+    assertEquals("Cluster should schedule not tasks", simpleClusterState2.schedule(req2), false);
   }
 
   @Test
   public void clusterShouldScheduleTasks() {
-    Cluster cluster = new Cluster(2);
+    SimpleClusterState simpleClusterState = new SimpleClusterState(2);
 
     Set<Task> tasks = Sets.newHashSet();
     tasks.add(new Task(0, 0.25, 0.25));
@@ -58,14 +56,14 @@ public class ClusterTest {
     long id = 1;
     ScheduleRequest req = new ScheduleRequest(id, tasks);
 
-    assertEquals("Cluster should schedule tasks", cluster.schedule(req), true);
+    assertEquals("Cluster should schedule tasks", simpleClusterState.schedule(req), true);
   }
 
   @Test
   public void clusterShouldUpdateUsage() {
 
     // Create local view of the cluster
-    Cluster clusterState = new Cluster(2);
+    SimpleClusterState simpleClusterStateState = new SimpleClusterState(2);
 
     // Create some tasks
     Set<Task> tasks = Sets.newHashSet();
@@ -77,16 +75,16 @@ public class ClusterTest {
     // Create a scheduler request and schedule the tasks on the cluster
     long id = 1;
     ScheduleRequest req = new ScheduleRequest(id, tasks);
-    clusterState.schedule(req);
+    simpleClusterStateState.schedule(req);
 
     // Create a "remote" view of the cluster
-    Cluster remoteClusterState = new Cluster(2);
+    SimpleClusterState remoteSimpleClusterStateState = new SimpleClusterState(2);
     assertEquals("Cluster state should update it's usage successfully",
-            remoteClusterState.updateUsage(clusterState.getUsage()),
+            remoteSimpleClusterStateState.updateUsage(simpleClusterStateState.getUsage()),
             true);
 
     //TODO: This is succeeding when it shouldn't be.
-    assertEquals("Local State should reflect remote state", remoteClusterState.getUsage(),
-            clusterState.getUsage());
+    assertEquals("Local State should reflect remote state", remoteSimpleClusterStateState.getUsage(),
+            simpleClusterStateState.getUsage());
   }
 }

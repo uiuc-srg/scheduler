@@ -9,18 +9,18 @@ import java.util.Map;
  * Created by read on 10/23/14.
  */
 public class RemoteCluster {
-  private Cluster clusterState;
+  private SimpleClusterState simpleClusterStateState;
 
-  public RemoteCluster(Cluster cluster) {
-    clusterState = cluster;
+  public RemoteCluster(SimpleClusterState simpleClusterState) {
+    simpleClusterStateState = simpleClusterState;
   }
 
   public RemoteCluster() {
-    clusterState = new Cluster();
+    simpleClusterStateState = new SimpleClusterState();
   }
 
   public ScheduleResponse placeJobs(Map<Long, Usage> placement) {
-    clusterState.updateUsage(placement);
+    simpleClusterStateState.updateUsage(placement);
     // TODO: Add logic to set usage here
     return new ScheduleResponse(0);
   }

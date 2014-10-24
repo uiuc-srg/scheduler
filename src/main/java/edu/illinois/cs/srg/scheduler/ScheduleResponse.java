@@ -15,4 +15,11 @@ public class ScheduleResponse implements Serializable {
   public ScheduleResponse(int result) {
     this.result = result;
   }
+
+  public ScheduleResponse(boolean result) {
+      if (result)
+          this.result = 1;
+      else
+          this.result = 0;
+  }
 }
