@@ -1,4 +1,4 @@
-package edu.illinois.cs.srg.scheduler;
+package edu.illinois.cs.srg.serializables;
 
 import java.io.Serializable;
 

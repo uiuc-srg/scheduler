@@ -6,11 +6,16 @@ import java.io.Serializable;
  * Created by gourav on 10/17/14.
  */
 public class Task implements Serializable {
-    public double getDuration() {
-        return duration;
-    }
 
-    int index;
+  long jobID;
+  int index;
+  double cpu;
+  double memory;
+  long duration;
+
+  public long getJobID() {
+    return jobID;
+  }
 
   public int getIndex() {
     return index;
@@ -24,15 +29,24 @@ public class Task implements Serializable {
     return memory;
   }
 
-  double cpu;
-  double memory;
-  double duration;
+  public long getDuration() {
+    return duration;
+  }
 
-  //TODO: add TASK Length to the task
-  public Task(int index, double cpu, double memory) {
+  /**
+   * duration is in milli-seconds
+   * @param jobID
+   * @param index
+   * @param cpu
+   * @param memory
+   * @param duration
+   */
+  public Task(long jobID, int index, double cpu, double memory, long duration) {
+    this.jobID = jobID;
     this.index = index;
     this.cpu = cpu;
     this.memory = memory;
+    this.duration = duration;
   }
 
 }

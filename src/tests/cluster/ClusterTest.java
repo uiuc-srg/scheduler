@@ -2,7 +2,7 @@ package cluster;
 
 import com.google.common.collect.Sets;
 import edu.illinois.cs.srg.cluster.SimpleClusterState;
-import edu.illinois.cs.srg.scheduler.ScheduleRequest;
+import edu.illinois.cs.srg.serializables.ScheduleRequest;
 import edu.illinois.cs.srg.scheduler.Task;
 import org.junit.Test;
 

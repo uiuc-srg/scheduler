@@ -1,4 +1,6 @@
-package edu.illinois.cs.srg.scheduler;
+package edu.illinois.cs.srg.serializables;
+
+import edu.illinois.cs.srg.scheduler.Task;
 
 import java.io.Serializable;
 import java.util.Set;

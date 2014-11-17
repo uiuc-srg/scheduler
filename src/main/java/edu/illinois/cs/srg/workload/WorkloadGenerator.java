@@ -1,8 +1,8 @@
 package edu.illinois.cs.srg.workload;
 
 import com.google.common.collect.Sets;
-import edu.illinois.cs.srg.scheduler.ScheduleRequest;
-import edu.illinois.cs.srg.scheduler.ScheduleResponse;
+import edu.illinois.cs.srg.serializables.ScheduleRequest;
+import edu.illinois.cs.srg.serializables.ScheduleResponse;
 import edu.illinois.cs.srg.scheduler.Task;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
@@ -27,8 +27,8 @@ public class WorkloadGenerator {
 
   public void generate() {
     Set<Task> tasks = Sets.newHashSet();
-    tasks.add(new Task(0, 0.25, 0.25));
-    tasks.add(new Task(1, 0.25, 0.25));
+    tasks.add(new Task(1, 0, 0.25, 0.25, 1000));
+    tasks.add(new Task(1, 1, 0.25, 0.25, 1000));
     long id = 1;
     while (true) {
       sendRequest(new ScheduleRequest(id++, tasks));
