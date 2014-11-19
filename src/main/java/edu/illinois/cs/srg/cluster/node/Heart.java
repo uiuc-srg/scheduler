@@ -26,7 +26,7 @@ public class Heart implements Runnable {
 
         //sleep
         try {
-          Thread.sleep(Constants.HEARTBEAT_INTERVAL);
+          Thread.sleep(edu.illinois.cs.srg.util.Constants.HEARTBEAT_INTERVAL);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -34,7 +34,7 @@ public class Heart implements Runnable {
         // beat
         synchronized (node.connectionLock) {
           Heartbeat heartbeat = new Heartbeat(node.getAvailableCPU(), node.getAvailableMemory());
-          LOG.debug("Sending " + heartbeat);
+          //LOG.debug("Sending " + heartbeat);
           node.output.writeObject(heartbeat);
           node.output.flush();
         }

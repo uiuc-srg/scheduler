@@ -1,9 +1,9 @@
 package edu.illinois.cs.srg.scheduler;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Currently, contains only a set of nodes.
@@ -12,15 +12,31 @@ import java.util.Set;
  */
 public class ClusterState {
   Set<Node> nodes;
+  List<Node> nodeList;
+
+  Object lock;
+  Random random;
 
   public ClusterState() {
     this.nodes = Sets.newConcurrentHashSet();
+    this.nodeList = Lists.newArrayList();
+    lock = new Object();
+    random = new Random();
   }
 
   public void add(Node node) {
-    nodes.add(node);
+    synchronized (lock) {
+      nodes.add(node);
+      nodeList.add(node);
+    }
   }
 
+  public Node getRandom() {
+    return nodeList.get(random.nextInt(nodeList.size()));
+  }
+
+  @Deprecated
+  // Need to provide concurrency control
   public Iterator<Node> getIterator() {
     return nodes.iterator();
   }

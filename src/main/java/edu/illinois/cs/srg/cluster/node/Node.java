@@ -85,19 +85,20 @@ public class Node implements Runnable {
 
         // wait for requests
         PlacementRequest request = (PlacementRequest) input.readObject();
+        LOG.info("{} Received {}", this, request);
 
         // execute requests
         boolean result = false;
         synchronized (resourceLock) {
-          if (add(request.getTask().getMemory(), request.getTask().getCpu())) {
+          if (add(request.getTaskInfo().getMemory(), request.getTaskInfo().getCpu())) {
             result = true;
-            tasks.add(new Task(request.getTask()));
+            tasks.add(new Task(request.getJobID(), request.getIndex(), request.getTaskInfo()));
             resourceLock.notify();
           }
         }
 
         // write response
-        PlacementResponse response = new PlacementResponse(result);
+        PlacementResponse response = new PlacementResponse(request.getJobID(), request.getIndex(), result);
         synchronized (connectionLock) {
           output.writeObject(response);
         }

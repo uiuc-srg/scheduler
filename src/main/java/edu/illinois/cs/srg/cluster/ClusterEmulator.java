@@ -1,7 +1,6 @@
 package edu.illinois.cs.srg.cluster;
 
 import com.google.common.collect.Sets;
-import edu.illinois.cs.srg.cluster.node.Constants;
 import edu.illinois.cs.srg.cluster.node.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +48,7 @@ public class ClusterEmulator {
   }
 
   public static void main(String[] args) {
-    ClusterEmulator emulator = new ClusterEmulator("127.0.0.1", Constants.NODE_SERVER_PORT);
+    ClusterEmulator emulator = new ClusterEmulator("127.0.0.1", edu.illinois.cs.srg.util.Constants.NODE_SERVER_PORT);
     emulator.initialize(2);
   }
 }

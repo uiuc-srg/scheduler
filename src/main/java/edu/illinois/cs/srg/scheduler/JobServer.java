@@ -13,14 +13,20 @@ import java.net.Socket;
 public class JobServer implements Runnable {
   private static final Logger log = LoggerFactory.getLogger(JobServer.class);
 
+  ClusterState clusterState;
+
+  public JobServer(ClusterState clusterState) {
+    this.clusterState = clusterState;
+  }
+
   @Override
   public void run() {
     try {
-      ServerSocket welcomeSocket = new ServerSocket(Constants.SCHEDULER_PORT);
+      ServerSocket welcomeSocket = new ServerSocket(Constants.JOB_SERVER_PORT);
 
       while (true) {
         Socket connectionSocket = welcomeSocket.accept();
-        Thread scheduler = new Thread(new DefaultJobHandler(connectionSocket));
+        Thread scheduler = new Thread(new DefaultJobHandler(clusterState, connectionSocket));
         // multipath
         scheduler.start();
       }
@@ -31,7 +37,7 @@ public class JobServer implements Runnable {
   }
 
   public static void main(String args[]) throws Exception {
-    JobServer server = new JobServer();
+    JobServer server = new JobServer(new ClusterState());
     server.run();
   }
 }

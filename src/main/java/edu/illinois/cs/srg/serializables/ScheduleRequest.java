@@ -1,8 +1,9 @@
 package edu.illinois.cs.srg.serializables;
 
-import edu.illinois.cs.srg.scheduler.Task;
+import edu.illinois.cs.srg.scheduler.TaskInfo;
 
 import java.io.Serializable;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -10,21 +11,24 @@ import java.util.Set;
  */
 public class ScheduleRequest implements Serializable {
 
-  public long getId() {
-    return id;
-  }
+  long jobID;
+  Map<Integer, TaskInfo> tasks;
 
-  // Job id
-  long id;
-  Set<Task> tasks;
-
-  public Set<Task> getTasks() {
-    return tasks;
-  }
-
-  public ScheduleRequest(long id, Set<Task> tasks) {
-    this.id = id;
+  public ScheduleRequest(long jobID, Map<Integer, TaskInfo> tasks) {
+    this.jobID = jobID;
     this.tasks = tasks;
   }
 
+  public long getJobID() {
+    return jobID;
+  }
+
+  public Map<Integer, TaskInfo> getTasks() {
+    return tasks;
+  }
+
+  @Override
+  public String toString() {
+    return new StringBuilder("ScheduleRequest[").append(jobID).append(",").append(tasks.size()).append("]").toString();
+  }
 }

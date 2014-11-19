@@ -15,7 +15,7 @@ public class Scheduler implements Runnable {
   public Scheduler() {
     this.clusterState = new ClusterState();
     nodeServer = new Thread(new NodeServer(this.clusterState));
-    jobServer = new JobServer();
+    jobServer = new JobServer(this.clusterState);
   }
 
   @Override

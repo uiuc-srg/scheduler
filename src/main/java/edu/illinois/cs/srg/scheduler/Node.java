@@ -1,16 +1,13 @@
 package edu.illinois.cs.srg.scheduler;
 
-import edu.illinois.cs.srg.serializables.Heartbeat;
-import edu.illinois.cs.srg.serializables.NodeInfo;
-import edu.illinois.cs.srg.serializables.PlacementResponse;
+import edu.illinois.cs.srg.serializables.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * Created by gourav on 11/15/14.
@@ -33,6 +30,9 @@ public class Node implements Runnable {
 
   Thread heartbeatServer;
 
+  Queue<RequestInfo> pendingRequests;
+  Object requestLock;
+
 
   public Node(Socket socket) throws IOException, ClassNotFoundException {
     this.socket = socket;
@@ -51,19 +51,34 @@ public class Node implements Runnable {
     this.heartbeatServer = new Thread(this);
     this.heartbeatServer.start();
 
+    pendingRequests = new LinkedList<RequestInfo>();
+    requestLock = new Object();
+
     LOG.info(this + " is created and started.");
   }
 
   public void update() throws IOException {
     try {
+      Object object = input.readObject();
       try {
-        Heartbeat heartbeat = (Heartbeat) input.readObject();
-        LOG.debug("{} for {}", heartbeat, this);
+        Heartbeat heartbeat = (Heartbeat) object;
+        //LOG.debug("{} for {}", heartbeat, this);
         this.availableCPU = heartbeat.availableCPU;
         this.availableMemory = heartbeat.availableMemory;
       } catch (ClassCastException e) {
-        PlacementResponse placementResponse = (PlacementResponse) input.readObject();
+        PlacementResponse placementResponse = (PlacementResponse) object;
         LOG.debug("{} for {}", placementResponse, this);
+        // no lock required here
+        RequestInfo requestInfo = pendingRequests.poll();
+        if (requestInfo.request.getJobID() == placementResponse.getJobID() &&
+          requestInfo.request.getIndex() == placementResponse.getIndex()) {
+          requestInfo.jobHandler.addResponse(placementResponse);
+          synchronized (requestInfo.jobHandler) {
+            requestInfo.jobHandler.notify();
+          }
+        } else {
+          LOG.error("{} is not compatible with {}", placementResponse, requestInfo.request);
+        }
       }
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
@@ -79,16 +94,28 @@ public class Node implements Runnable {
     try {
       while (true) {
         update();
-        if (Scheduler.DEBUG) {
-          try {
-            Thread.sleep(1000);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
       }
     } catch(Exception e) {
       e.printStackTrace();
+    }
+  }
+
+  public void schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
+    synchronized (requestLock) {
+      this.output.writeObject(request);
+      this.output.flush();
+      pendingRequests.add(new RequestInfo(jobHandler, request));
+    }
+  }
+
+
+  static class RequestInfo {
+    AbstractJobHandler jobHandler;
+    PlacementRequest request;
+
+    RequestInfo(AbstractJobHandler jobHandler, PlacementRequest request) {
+      this.jobHandler = jobHandler;
+      this.request = request;
     }
   }
 }

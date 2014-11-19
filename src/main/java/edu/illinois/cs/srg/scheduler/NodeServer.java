@@ -1,6 +1,5 @@
 package edu.illinois.cs.srg.scheduler;
 
-import edu.illinois.cs.srg.cluster.node.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +23,7 @@ public class NodeServer implements Runnable {
   public void run() {
     // This will receive new node requests.
     try {
-      ServerSocket serverSocket = new ServerSocket(Constants.NODE_SERVER_PORT);
+      ServerSocket serverSocket = new ServerSocket(edu.illinois.cs.srg.util.Constants.NODE_SERVER_PORT);
 
       while (true) {
         Socket socket = serverSocket.accept();

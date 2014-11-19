@@ -27,4 +27,12 @@ public class NodeInfo implements Serializable {
   public double getMemory() {
     return memory;
   }
+
+  @Override
+  public String toString() {
+    return new StringBuilder("NodeInfo[").append(id).append(", ")
+      .append(cpu).append(", ")
+      .append(memory).append("]")
+      .toString();
+  }
 }

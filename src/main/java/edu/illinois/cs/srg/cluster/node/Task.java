@@ -1,5 +1,7 @@
 package edu.illinois.cs.srg.cluster.node;
 
+import edu.illinois.cs.srg.scheduler.TaskInfo;
+
 /**
  * Created by gourav on 11/14/14.
  */
@@ -25,12 +27,12 @@ public class Task implements Comparable<Task> {
     this.endTimestamp = System.currentTimeMillis() + duration;
   }
 
-  public Task(edu.illinois.cs.srg.scheduler.Task task) {
-    this.jobID = task.getJobID();
-    this.index = task.getIndex();
-    this.cpu = task.getCpu();
-    this.memory = task.getMemory();
-    this.endTimestamp = System.currentTimeMillis() + task.getDuration();
+  public Task(long jobID, int index, TaskInfo taskInfo) {
+    this.jobID = jobID;
+    this.index = index;
+    this.cpu = taskInfo.getCpu();
+    this.memory = taskInfo.getMemory();
+    this.endTimestamp = System.currentTimeMillis() + taskInfo.getDuration();
   }
 
   @Override
