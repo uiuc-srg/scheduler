@@ -9,11 +9,12 @@ public class PlacementResponse implements Serializable {
   long jobID;
   int index;
   boolean result;
+  long receiveTime;
 
-  public PlacementResponse(long jobID, int index, boolean result) {
+  public PlacementResponse(long jobID, int index, long receiveTime) {
     this.jobID = jobID;
     this.index = index;
-    this.result = result;
+    this.receiveTime =receiveTime;
   }
 
   public long getJobID() {
@@ -26,6 +27,14 @@ public class PlacementResponse implements Serializable {
 
   public boolean getResult() {
     return result;
+  }
+
+  public long getReceiveTime() {
+    return receiveTime;
+  }
+
+  public void addResult(boolean result) {
+    this.result = result;
   }
 
   @Override

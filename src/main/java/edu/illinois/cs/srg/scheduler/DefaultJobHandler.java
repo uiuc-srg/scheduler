@@ -11,11 +11,8 @@ import java.util.Map;
  */
 public class DefaultJobHandler extends AbstractJobHandler {
 
-  ClusterState clusterState;
-
   public DefaultJobHandler(ClusterState clusterState, Socket socket) {
-    super(socket);
-    this.clusterState = clusterState;
+    super(clusterState, socket);
   }
 
   @Override

@@ -25,16 +25,22 @@ public class NodeServer implements Runnable {
     try {
       ServerSocket serverSocket = new ServerSocket(edu.illinois.cs.srg.util.Constants.NODE_SERVER_PORT);
 
-      while (true) {
+      while (!Scheduler.terminate) {
         Socket socket = serverSocket.accept();
         try {
           clusterState.add(new Node(socket));
         } catch (ClassNotFoundException e) {
-          e.printStackTrace();
+          LOG.info("{} shutting down.", this);
+          //e.printStackTrace();
         }
       }
     } catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  @Override
+  public String toString() {
+    return "NodeServer";
   }
 }

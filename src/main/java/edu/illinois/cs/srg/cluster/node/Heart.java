@@ -1,5 +1,6 @@
 package edu.illinois.cs.srg.cluster.node;
 
+import edu.illinois.cs.srg.cluster.ClusterEmulator;
 import edu.illinois.cs.srg.serializables.Heartbeat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +23,7 @@ public class Heart implements Runnable {
   @Override
   public void run() {
     try {
-      while (true) {
+      while (!ClusterEmulator.terminate) {
 
         //sleep
         try {

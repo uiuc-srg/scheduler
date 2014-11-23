@@ -1,5 +1,7 @@
 package edu.illinois.cs.srg.cluster.node;
 
+import edu.illinois.cs.srg.cluster.ClusterEmulator;
+
 /**
  * Created by gourav on 11/14/14.
  */
@@ -13,7 +15,7 @@ public class Killer implements Runnable {
 
   @Override
   public void run() {
-    while(true) {
+    while(!ClusterEmulator.terminate) {
       synchronized (node.resourceLock) {
 
         // kill

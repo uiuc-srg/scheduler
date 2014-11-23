@@ -1,13 +1,17 @@
 package edu.illinois.cs.srg.cluster.node;
 
+import com.google.common.collect.Lists;
+import edu.illinois.cs.srg.cluster.ClusterEmulator;
 import edu.illinois.cs.srg.serializables.NodeInfo;
 import edu.illinois.cs.srg.serializables.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
+import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
@@ -39,10 +43,15 @@ public class Node implements Runnable {
   // threads
   Thread heart;
   Thread killer;
+  Thread collector;
 
   // locks
   Object resourceLock;
   Object connectionLock;
+
+  List<NodeUtilization> utilizations;
+
+  String logdir;
 
   private Node(long id, double cpu, double memory) {
     this.id = id;
@@ -54,7 +63,7 @@ public class Node implements Runnable {
     tasks = new PriorityQueue<Task>();
   }
 
-  public Node(long id, double cpu, double memory, String schedulerAddress, int schedulerPort) throws IOException{
+  public Node(long id, double cpu, double memory, String schedulerAddress, int schedulerPort, String logdir) throws IOException{
     this(id, cpu, memory);
 
     this.socket = new Socket(schedulerAddress, schedulerPort);
@@ -67,9 +76,14 @@ public class Node implements Runnable {
 
     heart = new Thread(new Heart(this));
     killer = new Thread(new Killer(this));
+    collector = new Thread(new StatsCollector(this));
 
     resourceLock = new Object();
     connectionLock = new Object();
+
+    utilizations = Lists.newLinkedList();
+
+    this.logdir = logdir;
   }
 
 
@@ -79,13 +93,20 @@ public class Node implements Runnable {
     // start threads
     heart.start();
     killer.start();
+    collector.start();
 
     try {
-      while (true) {
+      while (!ClusterEmulator.terminate) {
 
         // wait for requests
         PlacementRequest request = (PlacementRequest) input.readObject();
+        PlacementResponse response = new PlacementResponse(request.getJobID(), request.getIndex(), System.currentTimeMillis());
         LOG.info("{} Received {}", this, request);
+
+        if(request.getJobID() == Constants.SIGTERM) {
+          exit();
+          break;
+        }
 
         // execute requests
         boolean result = false;
@@ -97,8 +118,8 @@ public class Node implements Runnable {
           }
         }
 
-        // write response
-        PlacementResponse response = new PlacementResponse(request.getJobID(), request.getIndex(), result);
+        // write result / response
+        response.addResult(result);
         synchronized (connectionLock) {
           output.writeObject(response);
         }
@@ -107,6 +128,32 @@ public class Node implements Runnable {
       e.printStackTrace();
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
+    }
+
+    // write logs
+    write();
+  }
+
+  private void write() {
+    try {
+      File file = new File(logdir + "/" + id);
+      file.createNewFile();
+      BufferedWriter writer = new BufferedWriter(new FileWriter(file));
+
+      for (NodeUtilization utilization : utilizations) {
+        writer.write(utilization.toString());
+        writer.newLine();
+      }
+      writer.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public void exit() {
+    ClusterEmulator.terminate = true;
+    synchronized (resourceLock) {
+      resourceLock.notifyAll();
     }
   }
 

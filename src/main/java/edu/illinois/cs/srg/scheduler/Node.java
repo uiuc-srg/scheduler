@@ -92,20 +92,26 @@ public class Node implements Runnable {
   @Override
   public void run() {
     try {
-      while (true) {
+      while (!Scheduler.terminate) {
         update();
       }
+      input.close();
+      output.close();
     } catch(Exception e) {
-      e.printStackTrace();
+      LOG.info("{} shutting down.", this);
+      //e.printStackTrace();
     }
   }
 
-  public void schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
+  public long schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
+    long sentTime = 0;
     synchronized (requestLock) {
       this.output.writeObject(request);
       this.output.flush();
+      sentTime = System.currentTimeMillis();
       pendingRequests.add(new RequestInfo(jobHandler, request));
     }
+    return sentTime;
   }
 
 

@@ -2,6 +2,7 @@ package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.sun.tools.internal.jxc.apt.Const;
 import edu.illinois.cs.srg.serializables.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
@@ -25,10 +26,12 @@ public abstract class AbstractJobHandler implements Runnable {
 
   Socket socket;
   Set<PlacementResponse> placementResponses;
+  ClusterState clusterState;
 
-  public AbstractJobHandler(Socket socket) {
+  public AbstractJobHandler(ClusterState clusterState, Socket socket) {
     this.socket = socket;
     placementResponses = Sets.newHashSet();
+    this.clusterState = clusterState;
   }
 
   public abstract Map<Integer, Node> schedule(ScheduleRequest scheduleRequest);
@@ -41,14 +44,21 @@ public abstract class AbstractJobHandler implements Runnable {
       outputStream.flush();
       ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
       request = (ScheduleRequest) inputStream.readObject();
+      ScheduleResponse response = new ScheduleResponse(request.getJobID(), System.currentTimeMillis());
       log.info("Received: " + request);
 
+      if (request.getJobID() == Constants.SIGTERM) {
+        exit();
+        return;
+      }
+
       Map<Integer, Node> schedule = schedule(request);
+      Map<Integer, Long> sentTime = Maps.newHashMap();
 
       for (Map.Entry<Integer, Node> entry : schedule.entrySet()) {
         Node node = entry.getValue();
         TaskInfo taskInfo = request.getTasks().get(entry.getKey());
-        node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo));
+        sentTime.put(entry.getKey(), node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo)));
       }
 
       int result = ScheduleResponse.SUCCESS;
@@ -74,11 +84,15 @@ public abstract class AbstractJobHandler implements Runnable {
 
       // create n write response
       Map<Integer, Boolean> results = Maps.newHashMap();
-      for (PlacementResponse response : placementResponses) {
-        results.put(response.getIndex(), response.getResult());
+      Map<Integer, Long> receiveTime = Maps.newHashMap();
+      for (PlacementResponse placementResponse : placementResponses) {
+        results.put(placementResponse.getIndex(), placementResponse.getResult());
+        receiveTime.put(placementResponse.getIndex(), placementResponse.getReceiveTime());
       }
-      ScheduleResponse response = new ScheduleResponse(request.getJobID(), results, result);
+
+      response.addResult(results, sentTime, receiveTime, result);
       outputStream.writeObject(response);
+
 
       inputStream.close();
       outputStream.close();
@@ -89,6 +103,21 @@ public abstract class AbstractJobHandler implements Runnable {
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
     }
+  }
+
+  public void exit() throws IOException {
+    PlacementRequest sigterm = Constants.createSIGTERMPlacementRequest();
+
+    for (Node node : clusterState.nodeList) {
+      node.schedule(this, sigterm);
+    }
+
+    try {
+      Thread.sleep(Constants.SCHEDULER_SIGTERM_WAIT);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    Scheduler.terminate = true;
   }
 
   public void addResponse(PlacementResponse response) {
