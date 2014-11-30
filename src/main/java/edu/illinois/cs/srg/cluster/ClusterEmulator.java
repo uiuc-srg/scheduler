@@ -1,12 +1,14 @@
 package edu.illinois.cs.srg.cluster;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.illinois.cs.srg.cluster.node.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.text.DecimalFormat;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -20,41 +22,132 @@ public class ClusterEmulator {
   String experiment;
   String schedulerAddress;
   int schedulerPort;
-  Set<Thread> nodes;
+  Set<Thread> threads;
+  Set<Node> nodes;
 
-  public ClusterEmulator(String experiment, String schedulerAddress, int schedulerPort) {
+  Thread monitor;
+
+  String logdir;
+
+  public static long startTime;
+
+  public ClusterEmulator(String experiment, String schedulerAddress, int schedulerPort) throws IOException {
     this.experiment = experiment;
     this.schedulerAddress = schedulerAddress;
     this.schedulerPort = schedulerPort;
+    this.threads = Sets.newHashSet();
     this.nodes = Sets.newHashSet();
-  }
 
-  // Initialize and start up Node Threads
-  // TODO: Read node resources from a file
-  public void initialize(int numberNodes) {
+    logdir = System.getProperty("user.home") + "/logs/" + experiment + "/cluster";
 
-    String logdir = "~/logs/" + experiment + "/cluster";
     File dir = new File(logdir);
     dir.mkdirs();
 
+    monitor = new Thread(new ClusterMonitor(System.getProperty("user.home") + "/logs/" + experiment + "/monitor"));
+  }
+
+  public void homogeneousCluster(int numberNodes) {
     for (int i=0; i<numberNodes; i++) {
       try {
-        Thread node = new Thread(new Node(i, 0.5, 0.5, schedulerAddress, schedulerPort, logdir));
-        node.start();
+        Node node = new Node(i, 0.5, 0.5, schedulerAddress, schedulerPort, logdir);
         nodes.add(node);
+        Thread thread = new Thread(node);
+        thread.start();
+        threads.add(thread);
       } catch (IOException e) {
         e.printStackTrace();
       }
     }
+  }
+
+  public void heterogeneousCluster(int limit) throws IOException {
+    String file = System.getProperty("user.home") + "/traces/machines";
+    BufferedReader reader = new BufferedReader(new FileReader(new File(file)));
+
+    String machineLine;
+    while (((machineLine = reader.readLine()) != null) && threads.size() < limit) {
+      String[] machine = machineLine.split(", ");
+      long id = Long.parseLong(machine[0]);
+      double cpu = Double.parseDouble(machine[1]);
+      double memory = Double.parseDouble(machine[2]);
+      try {
+        Node node = new Node(id, cpu, memory, schedulerAddress, schedulerPort, logdir);
+        nodes.add(node);
+        Thread thread = new Thread(node);
+        thread.start();
+        threads.add(thread);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+
+  // Initialize and start up Node Threads
+  // TODO: Read node resources from a file
+  public void initialize(int numberNodes) throws IOException {
+    monitor.start();
+
+
+
+    startTime = System.currentTimeMillis();
+    //homogeneousCluster(2);
+    heterogeneousCluster(60);
 
     LOG.debug("All nodes started.");
-    for (Thread node : nodes) {
+    for (Thread node : threads) {
       try {
         node.join();
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+    long totalSeconds = (System.currentTimeMillis() - startTime) / 1000;
+
+    try {
+      BufferedWriter writer = new BufferedWriter(new FileWriter(new File(System.getProperty("user.home") + "/logs/" + experiment + "/utilization")));
+      double totalCpu = 0;
+      double totalMemory = 0;
+      Map<Long, Double> lastCpuUsage = Maps.newHashMap();
+      Map<Long, Double> lastMemoryUsage = Maps.newHashMap();
+      for (Node node : nodes) {
+        totalCpu += node.getCpu();
+        totalMemory += node.getMemory();
+        lastCpuUsage.put(node.getId(), 0.0);
+        lastMemoryUsage.put(node.getId(), 0.0);
+      }
+
+      DecimalFormat formatter = new DecimalFormat("##.##");
+      long offset = -1;
+      for (long time = 0; time <= totalSeconds; time++) {
+        double usedCpu = 0;
+        double usedMemory = 0;
+        for (Node node : nodes) {
+          if (node.utilizations.containsKey(time)) {
+            //LOG.debug("Found usage for time {}", time);
+            lastCpuUsage.put(node.getId(), node.utilizations.get(time).getCpuUsage());
+            lastMemoryUsage.put(node.getId(), node.utilizations.get(time).getMemoryUsage());
+          }
+          usedCpu += lastCpuUsage.get(node.getId());
+          usedMemory += lastMemoryUsage.get(node.getId());
+        }
+        if ((usedCpu > 0 || usedMemory > 0) && offset == -1) {
+          offset = time;
+        }
+        double cpuUtil = usedCpu / totalCpu;
+        double memoryUtil = usedMemory / totalMemory;
+        if (offset != -1) {
+          writer.write((time - offset) + ", " + formatter.format(cpuUtil) + ", " + formatter.format(memoryUtil));
+          writer.newLine();
+        }
+      }
+      writer.flush();
+      writer.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    LOG.info("All nodes shut down. ClusterEmulator is shutting down.");
   }
 
   public static void main(String[] args) {
@@ -63,7 +156,12 @@ public class ClusterEmulator {
     if (args.length > 1) {
       schedulerAddress = args[1];
     }
-    ClusterEmulator emulator = new ClusterEmulator(args[0], schedulerAddress, edu.illinois.cs.srg.util.Constants.NODE_SERVER_PORT);
-    emulator.initialize(2);
+
+    try {
+      ClusterEmulator emulator = new ClusterEmulator(args[0], schedulerAddress, edu.illinois.cs.srg.util.Constants.NODE_SERVER_PORT);
+      emulator.initialize(2);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 }

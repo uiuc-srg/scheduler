@@ -2,12 +2,10 @@
 
 include("lib.php");
 
-$schedulerAddress = $argv[1];
-$workload = $argv[2];
-$scheduler = $argv[3];
-$cluster = $argv[4];
+$workload = $argv[1];
+$scheduler = $argv[2];
+$cluster = $argv[3];
 
 deploy();
-start();
 
 ?>

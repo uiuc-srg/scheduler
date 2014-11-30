@@ -4,30 +4,24 @@ package edu.illinois.cs.srg.cluster.node;
  * Created by gourav on 11/22/14.
  */
 public class NodeUtilization {
-  long timestamp;
-  double cpuUtilization;
-  double memoryUtilization;
+  double cpuUsage;
+  double memoryUsage;
 
-  public NodeUtilization(long timestamp, double cpuUtilization, double memoryUtilization) {
-    this.timestamp = timestamp;
-    this.cpuUtilization = cpuUtilization;
-    this.memoryUtilization = memoryUtilization;
+  public NodeUtilization(double cpuUsage, double memoryUsage) {
+    this.cpuUsage = cpuUsage;
+    this.memoryUsage = memoryUsage;
   }
 
-  public long getTimestamp() {
-    return timestamp;
+  public double getCpuUsage() {
+    return cpuUsage;
   }
 
-  public double getCpuUtilization() {
-    return cpuUtilization;
-  }
-
-  public double getMemoryUtilization() {
-    return memoryUtilization;
+  public double getMemoryUsage() {
+    return memoryUsage;
   }
 
   @Override
   public String toString() {
-    return timestamp + ", " + cpuUtilization + ", " + memoryUtilization;
+    return cpuUsage + ", " + memoryUsage;
   }
 }

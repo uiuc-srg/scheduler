@@ -2,7 +2,6 @@ package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.sun.tools.internal.jxc.apt.Const;
 import edu.illinois.cs.srg.serializables.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
@@ -27,11 +26,15 @@ public abstract class AbstractJobHandler implements Runnable {
   Socket socket;
   Set<PlacementResponse> placementResponses;
   ClusterState clusterState;
+  boolean waiting = true;
+
+  long jobID;
 
   public AbstractJobHandler(ClusterState clusterState, Socket socket) {
     this.socket = socket;
-    placementResponses = Sets.newHashSet();
+    placementResponses = Sets.newConcurrentHashSet();
     this.clusterState = clusterState;
+    this.jobID = 0;
   }
 
   public abstract Map<Integer, Node> schedule(ScheduleRequest scheduleRequest);
@@ -44,8 +47,9 @@ public abstract class AbstractJobHandler implements Runnable {
       outputStream.flush();
       ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
       request = (ScheduleRequest) inputStream.readObject();
+      this.jobID = request.getJobID();
       ScheduleResponse response = new ScheduleResponse(request.getJobID(), System.currentTimeMillis());
-      log.info("Received: " + request);
+      //log.info("Request: " + request);
 
       if (request.getJobID() == Constants.SIGTERM) {
         exit();
@@ -53,14 +57,19 @@ public abstract class AbstractJobHandler implements Runnable {
       }
 
       Map<Integer, Node> schedule = schedule(request);
-      Map<Integer, Long> sentTime = Maps.newHashMap();
 
+      if (schedule.size() != request.getTasks().size()) {
+        log.error("{}: schedule size does not match request size");
+      }
+
+      Map<Integer, Long> sentTime = Maps.newHashMap();
       for (Map.Entry<Integer, Node> entry : schedule.entrySet()) {
         Node node = entry.getValue();
         TaskInfo taskInfo = request.getTasks().get(entry.getKey());
         sentTime.put(entry.getKey(), node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo)));
       }
 
+      //log.debug("{}: waiting for results.", this);
       int result = ScheduleResponse.SUCCESS;
       long startTime = System.currentTimeMillis();
       try {
@@ -79,8 +88,11 @@ public abstract class AbstractJobHandler implements Runnable {
       }
       if (placementResponses.size() < schedule.size()) {
         result = ScheduleResponse.FAIL;
-        log.error("{} timed-out while waiting for response.");
+        log.error("{}: timed-out while waiting for response.", this);
+      } else {
+        //log.debug("{}: got all results", this);
       }
+      waiting = false;
 
       // create n write response
       Map<Integer, Boolean> results = Maps.newHashMap();
@@ -91,9 +103,10 @@ public abstract class AbstractJobHandler implements Runnable {
       }
 
       response.addResult(results, sentTime, receiveTime, result);
+      //log.info("Response: " + response);
       outputStream.writeObject(response);
-
-
+      outputStream.flush();
+      //log.debug("{}: wrote the result", this);
       inputStream.close();
       outputStream.close();
       socket.close();
@@ -106,21 +119,33 @@ public abstract class AbstractJobHandler implements Runnable {
   }
 
   public void exit() throws IOException {
+    try {
+      Thread.sleep(2*Constants.TIMEOUT);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
     PlacementRequest sigterm = Constants.createSIGTERMPlacementRequest();
 
     for (Node node : clusterState.nodeList) {
       node.schedule(this, sigterm);
     }
 
-    try {
-      Thread.sleep(Constants.SCHEDULER_SIGTERM_WAIT);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
     Scheduler.terminate = true;
+
+    log.info("Shutting down Scheduler.");
   }
 
   public void addResponse(PlacementResponse response) {
     placementResponses.add(response);
+  }
+
+  public boolean shouldIKnock() {
+    return waiting;
+  }
+
+  @Override
+  public String toString() {
+    return "JobHandler[" + jobID + "]";
   }
 }

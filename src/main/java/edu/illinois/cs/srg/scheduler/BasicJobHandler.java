@@ -7,11 +7,11 @@ import java.net.Socket;
 import java.util.Map;
 
 /**
- * Created by gourav on 10/17/14.
+ * Created by gourav on 11/30/14.
  */
-public class DefaultJobHandler extends AbstractJobHandler {
+public class BasicJobHandler extends AbstractJobHandler {
 
-  public DefaultJobHandler(ClusterState clusterState, Socket socket) {
+  public BasicJobHandler(ClusterState clusterState, Socket socket) {
     super(clusterState, socket);
   }
 

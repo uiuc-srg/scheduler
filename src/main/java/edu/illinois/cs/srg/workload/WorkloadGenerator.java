@@ -1,6 +1,8 @@
 package edu.illinois.cs.srg.workload;
 
+import edu.illinois.cs.srg.serializables.ScheduleRequest;
 import edu.illinois.cs.srg.util.Constants;
+import edu.illinois.cs.srg.workload.google.GoogleRequestGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +17,11 @@ import java.net.Socket;
 public class WorkloadGenerator {
   private static final Logger log = LoggerFactory.getLogger(WorkloadGenerator.class);
 
+  public static boolean terminate = false;
+
   String schedulerAddress;
   String experiment;
+  Thread monitor;
 
   public WorkloadGenerator(String experiment, String schedulerAddress) {
     this.experiment = experiment;
@@ -25,11 +30,16 @@ public class WorkloadGenerator {
 
   public void generate() {
     try {
-
-      File dir = new File("~/logs/" + experiment);
+      String logdir = System.getProperty("user.home") + "/logs/" + experiment;
+      File dir = new File(logdir);
       dir.mkdirs();
 
-      Thread requestGenerator = new Thread(new DefaultRequestGenerator("default", schedulerAddress, experiment));
+      monitor = new Thread(new WGMonitor(logdir + "/monitor"));
+      monitor.start();
+
+
+      //Thread requestGenerator = new Thread(new DefaultRequestGenerator("default", schedulerAddress, experiment));
+      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, 1*2*60*1000, 100));
       requestGenerator.start();
       requestGenerator.join();
 
@@ -47,8 +57,16 @@ public class WorkloadGenerator {
       Socket clientSocket = new Socket(schedulerAddress, Constants.JOB_SERVER_PORT);
       ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
       outStream.flush();
-      outStream.writeObject(Constants.createSIGTERMScheduleRequest());
+      ScheduleRequest request = Constants.createSIGTERMScheduleRequest();
+      log.info("Request: {}", request);
+      outStream.writeObject(request);
       outStream.flush();
+
+      try {
+        Thread.sleep(Constants.WORKLOAD_SIGTERM_WAIT);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
 
       outStream.close();
       clientSocket.close();
@@ -56,6 +74,9 @@ public class WorkloadGenerator {
       log.error("Unable to terminate experiment gracefully");
       e.printStackTrace();
     }
+
+    log.info("Shutting down WorkloadGenerator");
+    WorkloadGenerator.terminate = true;
   }
 
 

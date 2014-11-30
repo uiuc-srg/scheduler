@@ -1,6 +1,7 @@
 package edu.illinois.cs.srg.cluster.node;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import edu.illinois.cs.srg.cluster.ClusterEmulator;
 import edu.illinois.cs.srg.serializables.NodeInfo;
 import edu.illinois.cs.srg.serializables.PlacementRequest;
@@ -12,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.Socket;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
 
@@ -49,7 +51,7 @@ public class Node implements Runnable {
   Object resourceLock;
   Object connectionLock;
 
-  List<NodeUtilization> utilizations;
+  public Map<Long, NodeUtilization> utilizations;
 
   String logdir;
 
@@ -73,6 +75,7 @@ public class Node implements Runnable {
 
 
     this.output.writeObject(new NodeInfo(id, cpu, memory));
+    this.output.flush();
 
     heart = new Thread(new Heart(this));
     killer = new Thread(new Killer(this));
@@ -81,7 +84,7 @@ public class Node implements Runnable {
     resourceLock = new Object();
     connectionLock = new Object();
 
-    utilizations = Lists.newLinkedList();
+    utilizations = Maps.newHashMap();
 
     this.logdir = logdir;
   }
@@ -96,12 +99,12 @@ public class Node implements Runnable {
     collector.start();
 
     try {
-      while (!ClusterEmulator.terminate) {
+      while (true) {
 
         // wait for requests
         PlacementRequest request = (PlacementRequest) input.readObject();
         PlacementResponse response = new PlacementResponse(request.getJobID(), request.getIndex(), System.currentTimeMillis());
-        LOG.info("{} Received {}", this, request);
+        //LOG.info("{} Received {}", this, request);
 
         if(request.getJobID() == Constants.SIGTERM) {
           exit();
@@ -113,6 +116,7 @@ public class Node implements Runnable {
         synchronized (resourceLock) {
           if (add(request.getTaskInfo().getMemory(), request.getTaskInfo().getCpu())) {
             result = true;
+            //LOG.debug("Added task {}", request);
             tasks.add(new Task(request.getJobID(), request.getIndex(), request.getTaskInfo()));
             resourceLock.notify();
           }
@@ -122,6 +126,7 @@ public class Node implements Runnable {
         response.addResult(result);
         synchronized (connectionLock) {
           output.writeObject(response);
+          output.flush();
         }
       }
     } catch (IOException e) {
@@ -130,31 +135,40 @@ public class Node implements Runnable {
       e.printStackTrace();
     }
 
-    // write logs
-    write();
-  }
-
-  private void write() {
     try {
-      File file = new File(logdir + "/" + id);
-      file.createNewFile();
-      BufferedWriter writer = new BufferedWriter(new FileWriter(file));
-
-      for (NodeUtilization utilization : utilizations) {
-        writer.write(utilization.toString());
-        writer.newLine();
-      }
-      writer.close();
-    } catch (IOException e) {
+      Thread.sleep(2*edu.illinois.cs.srg.util.Constants.STATS_INTERVAL);
+    } catch (InterruptedException e) {
       e.printStackTrace();
     }
   }
 
   public void exit() {
+    // LOG.info("Shutting down {}", this);
     ClusterEmulator.terminate = true;
+    PlacementResponse response = Constants.createSIGTERMPlacementResponse();
+    synchronized (connectionLock) {
+      try {
+        output.writeObject(response);
+        output.flush();
+
+        output.close();
+        input.close();
+        socket.close();
+      } catch (IOException e) {
+        LOG.error("{}: error sending SIGTERM PlacementResponse", this);
+        //e.printStackTrace();
+      }
+    }
     synchronized (resourceLock) {
       resourceLock.notifyAll();
     }
+
+    try {
+      Thread.sleep(Constants.HEARTBEAT_INTERVAL);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+
   }
 
   public long getId() {
@@ -175,6 +189,14 @@ public class Node implements Runnable {
 
   public double getAvailableMemory() {
     return memory - memoryUsed;
+  }
+
+  public double getMemoryUsed() {
+    return memoryUsed;
+  }
+
+  public double getCpuUsed() {
+    return cpuUsed;
   }
 
   /**
@@ -211,6 +233,7 @@ public class Node implements Runnable {
 
   // Should only be called after acquiring locks.
   public void release(double memory, double cpu) {
+    //LOG.debug("{}: Resource are being released.", this);
     if (memory < 0 || cpu < 0) {
       throw new RuntimeException("Memory and CPU should be non-negative: " + memory + ", " + cpu);
     }

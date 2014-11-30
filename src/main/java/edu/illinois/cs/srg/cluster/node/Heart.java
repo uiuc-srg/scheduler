@@ -36,12 +36,15 @@ public class Heart implements Runnable {
         synchronized (node.connectionLock) {
           Heartbeat heartbeat = new Heartbeat(node.getAvailableCPU(), node.getAvailableMemory());
           //LOG.debug("Sending " + heartbeat);
+
           node.output.writeObject(heartbeat);
           node.output.flush();
         }
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      if (!ClusterEmulator.terminate) {
+        e.printStackTrace();
+      }
     }
   }
 

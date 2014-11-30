@@ -1,11 +1,14 @@
 package edu.illinois.cs.srg.cluster.node;
 
 import edu.illinois.cs.srg.cluster.ClusterEmulator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by gourav on 11/14/14.
  */
 public class Killer implements Runnable {
+  private static final Logger LOG = LoggerFactory.getLogger(Node.class);
 
   Node node;
 
@@ -19,8 +22,9 @@ public class Killer implements Runnable {
       synchronized (node.resourceLock) {
 
         // kill
-        while (node.tasks.size() > 0 && node.tasks.peek().endTimestamp >= System.currentTimeMillis()) {
+        while (node.tasks.size() > 0 && node.tasks.peek().endTimestamp <= System.currentTimeMillis()) {
           Task task = node.tasks.poll();
+          //LOG.debug("Killed task {}", task);
           node.release(task.memory, task.cpu);
         }
 

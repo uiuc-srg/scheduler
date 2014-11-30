@@ -4,6 +4,8 @@ import com.google.common.collect.Maps;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
 import edu.illinois.cs.srg.serializables.ScheduleResponse;
 import edu.illinois.cs.srg.util.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -14,12 +16,13 @@ import java.util.Map;
 /**
  * Created by gourav on 11/2/14.
  */
-public class Job implements Runnable {
+public class JobThread implements Runnable {
+  private static final Logger log = LoggerFactory.getLogger(WorkloadGenerator.class);
 
   AbstractRequestGenerator requestGenerator;
   ScheduleRequest request;
 
-  public Job(ScheduleRequest request, AbstractRequestGenerator requestGenerator) {
+  public JobThread(ScheduleRequest request, AbstractRequestGenerator requestGenerator) {
     this.request = request;
     this.requestGenerator = requestGenerator;
 
@@ -31,6 +34,11 @@ public class Job implements Runnable {
       long sentTime = System.currentTimeMillis();
       ScheduleResponse response = sendRequest(request);
       long receiveTime = System.currentTimeMillis();
+
+      if (request.getTasks().size() != response.getSentTime().size()) {
+        log.error("{}: response size does not match request size");
+      }
+
       write(response, sentTime, receiveTime);
     } catch (IOException e) {
       synchronized (requestGenerator.errorLock) {
@@ -47,10 +55,13 @@ public class Job implements Runnable {
     ObjectOutputStream outStream = new ObjectOutputStream(clientSocket.getOutputStream());
     outStream.flush();
     ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
+    //log.info("Request: {}", request);
     outStream.writeObject(request);
+    outStream.flush();
+
     ScheduleResponse response = (ScheduleResponse) inStream.readObject();
 
-    //log.info("Got Response: {}", response);
+    //log.info("Response: {}", response);
     outStream.close();
     inStream.close();
     clientSocket.close();
@@ -61,27 +72,35 @@ public class Job implements Runnable {
     StringBuilder job = new StringBuilder(response.getJobID() + ", ").append(response.getResults().size() + ", ");
     Map<Integer, StringBuilder> tasks = Maps.newHashMap();
 
-    boolean jobResult = (response.getResult() == ScheduleResponse.SUCCESS);
-    for (Map.Entry<Integer, Boolean> entry : response.getResults().entrySet()) {
-      tasks.put(entry.getKey(), new StringBuilder(response.getJobID() + ", ").append(entry.getKey() + ", ").append(entry.getValue()));
-      jobResult &= entry.getValue();
-    }
-    job.append(jobResult + ", ");
-
     long maxSentTime = 0;
-    for (Map.Entry<Integer, Long> entry : response.getSentTime().entrySet()) {
-      tasks.get(entry.getKey()).append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(entry.getValue() + ", ");
-      maxSentTime = Math.max(maxSentTime, entry.getValue());
-    }
-    job.append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(maxSentTime + ", ");
-
+    boolean jobResult = (response.getResult() == ScheduleResponse.SUCCESS);
     long maxRecvTime = 0;
-    for (Map.Entry<Integer, Long> entry : response.getReceiveTime().entrySet()) {
-      tasks.get(entry.getKey()).append(entry.getValue() + ", ").append(receiveTime);
-      maxRecvTime = Math.max(maxRecvTime, entry.getValue());
-    }
-    job.append(maxRecvTime + ", ").append(receiveTime);
 
+    for (Map.Entry<Integer, Long> entry : response.getSentTime().entrySet()) {
+      int index = entry.getKey();
+      StringBuilder task = new StringBuilder(response.getJobID() + ", ").append(index + ", ").append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(entry.getValue() + ", ");
+
+      maxSentTime = Math.max(maxSentTime, entry.getValue());
+
+      if (response.getResults().containsKey(index)) {
+        task.append(response.getResults().get(index) + ", ");
+        jobResult &= response.getResults().get(index);
+      } else {
+        task.append(false + ", ");
+      }
+
+      if (response.getReceiveTime().containsKey(index)) {
+        task.append(response.getReceiveTime().get(index) + ", ");
+        maxRecvTime = Math.max(maxRecvTime, response.getReceiveTime().get(index));
+      } else {
+        task.append(0 + ", ");
+      }
+
+      task.append(receiveTime);
+      tasks.put(index, task);
+
+    }
+    job.append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(maxSentTime + ", ").append(jobResult + ", ").append(maxRecvTime + ", ").append(receiveTime);
 
     synchronized (requestGenerator.writerLock) {
       requestGenerator.jobWriter.write(job.toString());

@@ -15,16 +15,18 @@ public abstract class AbstractRequestGenerator implements Runnable {
 
   private final Logger log;
 
-  String name;
-  String schedulerAddress;
-  String experiment;
+  protected String name;
+  protected String schedulerAddress;
+  protected String experiment;
 
-  BufferedWriter jobWriter;
-  BufferedWriter taskWriter;
-  Object writerLock;
+  protected  BufferedWriter jobWriter;
+  protected BufferedWriter taskWriter;
+  protected Object writerLock;
 
-  int errors;
-  Object errorLock;
+  protected int errors;
+  protected Object errorLock;
+
+  protected String logdir;
 
 
   protected AbstractRequestGenerator(String name, String schedulerAddress, String experiment) throws IOException {
@@ -33,11 +35,13 @@ public abstract class AbstractRequestGenerator implements Runnable {
     this.schedulerAddress = schedulerAddress;
     this.experiment = experiment;
 
-    File jobFile = new File("~/logs/" + experiment + "/" + name + ".job");
+    logdir = System.getProperty("user.home") + "/logs/" + experiment + "/";
+
+    File jobFile = new File(logdir + "/" + name + ".job");
     jobFile.createNewFile();
     jobWriter = new BufferedWriter(new FileWriter(jobFile));
 
-    File taskFile = new File("~/logs/" + experiment + "/" + name + ".task");
+    File taskFile = new File(logdir + "/" + name + ".task");
     taskFile.createNewFile();
     taskWriter = new BufferedWriter(new FileWriter(taskFile));
     writerLock = new Object();
@@ -60,7 +64,7 @@ public abstract class AbstractRequestGenerator implements Runnable {
         if (request == null) {
           break;
         }
-        Thread job = new Thread(new Job(request, this));
+        Thread job = new Thread(new JobThread(request, this));
         job.start();
       }
       try {
@@ -74,6 +78,5 @@ public abstract class AbstractRequestGenerator implements Runnable {
       e.printStackTrace();
     }
   }
-
 
 }

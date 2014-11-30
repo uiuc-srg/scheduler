@@ -1,6 +1,7 @@
 package edu.illinois.cs.srg.scheduler;
 
 import edu.illinois.cs.srg.serializables.*;
+import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ public class Node implements Runnable {
   ObjectInputStream input;
   ObjectOutputStream output;
 
-  Thread heartbeatServer;
+  Thread node;
 
   Queue<RequestInfo> pendingRequests;
   Object requestLock;
@@ -48,16 +49,22 @@ public class Node implements Runnable {
     this.availableCPU = this.cpu;
     this.availableMemory = this.memory;
 
-    this.heartbeatServer = new Thread(this);
-    this.heartbeatServer.start();
+    this.node = new Thread(this);
+    this.node.start();
 
     pendingRequests = new LinkedList<RequestInfo>();
     requestLock = new Object();
 
-    LOG.info(this + " is created and started.");
+    Debugger.increment();
+    //LOG.info(this + " is created and started.");
   }
 
-  public void update() throws IOException {
+  /**
+   * Returns if we should terminate.
+   * @return
+   * @throws IOException
+   */
+  public boolean update() throws IOException {
     try {
       Object object = input.readObject();
       try {
@@ -67,22 +74,49 @@ public class Node implements Runnable {
         this.availableMemory = heartbeat.availableMemory;
       } catch (ClassCastException e) {
         PlacementResponse placementResponse = (PlacementResponse) object;
-        LOG.debug("{} for {}", placementResponse, this);
-        // no lock required here
-        RequestInfo requestInfo = pendingRequests.poll();
-        if (requestInfo.request.getJobID() == placementResponse.getJobID() &&
-          requestInfo.request.getIndex() == placementResponse.getIndex()) {
-          requestInfo.jobHandler.addResponse(placementResponse);
-          synchronized (requestInfo.jobHandler) {
-            requestInfo.jobHandler.notify();
+        //LOG.debug("{} for {}", placementResponse, this);
+
+        if (placementResponse.getJobID() == Constants.SIGTERM) {
+          //LOG.debug("{}: Got SIGTERM", this);
+          if (pendingRequests.size() > 0) {
+            LOG.warn("{} shutting down with some requests pending.", this);
           }
-        } else {
-          LOG.error("{} is not compatible with {}", placementResponse, requestInfo.request);
+          return true;
+        }
+
+        // no lock required here
+        boolean success = false;
+        while (pendingRequests.size() > 0) {
+          RequestInfo requestInfo = pendingRequests.poll();
+          if (requestInfo.request.getJobID() == placementResponse.getJobID() &&
+            requestInfo.request.getIndex() == placementResponse.getIndex()) {
+
+            if (requestInfo.jobHandler.shouldIKnock()) {
+              requestInfo.jobHandler.addResponse(placementResponse);
+              synchronized (requestInfo.jobHandler) {
+                requestInfo.jobHandler.notify();
+              }
+            } else {
+              LOG.error("{}: JobHandler do not want the response no more", this);
+            }
+
+            success = true;
+            break;
+          } else {
+            LOG.error("{} is not compatible with {}", placementResponse, requestInfo.request);
+          }
+        }
+
+        if (!success) {
+          LOG.error("{} does not have matching pending request.", placementResponse);
         }
       }
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
+    } catch (NullPointerException e) {
+      e.printStackTrace();
     }
+    return false;
   }
 
   public String toString() {
@@ -91,25 +125,36 @@ public class Node implements Runnable {
 
   @Override
   public void run() {
-    try {
-      while (!Scheduler.terminate) {
-        update();
+    while (true) {
+      try {
+        if (update()) {
+          break;
+        }
+      } catch (IOException e) {
+        LOG.info("{} got {}.", this, e);
+        e.printStackTrace();
       }
+    }
+    try {
       input.close();
       output.close();
-    } catch(Exception e) {
-      LOG.info("{} shutting down.", this);
-      //e.printStackTrace();
+      socket.close();
+    } catch (IOException e1) {
+      //e1.printStackTrace();
     }
+    //LOG.info("{} shutting down.", this);
+    Debugger.decrement();
   }
 
   public long schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
     long sentTime = 0;
     synchronized (requestLock) {
+      if (request.getJobID() != Constants.SIGTERM) {
+        pendingRequests.add(new RequestInfo(jobHandler, request));
+      }
       this.output.writeObject(request);
       this.output.flush();
       sentTime = System.currentTimeMillis();
-      pendingRequests.add(new RequestInfo(jobHandler, request));
     }
     return sentTime;
   }

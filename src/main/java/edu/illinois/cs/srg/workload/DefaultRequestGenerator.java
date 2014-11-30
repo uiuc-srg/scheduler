@@ -29,8 +29,8 @@ public class DefaultRequestGenerator extends AbstractRequestGenerator {
       e.printStackTrace();
     }
     Map<Integer, TaskInfo> tasks = Maps.newHashMap();
-    tasks.put(0, new TaskInfo(0.25, 0.25, 1000));
-    tasks.put(1, new TaskInfo(0.25, 0.25, 1000));
+    tasks.put(0, new TaskInfo(0.25, 0.25, 50000));
+    tasks.put(1, new TaskInfo(0.25, 0.25, 50000));
     return new ScheduleRequest(requestCount, tasks);
   }
 }

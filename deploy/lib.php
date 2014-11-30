@@ -11,51 +11,62 @@ start();*/
 
 function prepare() {
 	global $argv;
-	for($i=2; $i<count($argv); $i++) {
+	for($i=1; $i<count($argv); $i++) {
 		run($argv[$i], "mkdir -p code");
 		run($argv[$i], "mkdir -p logs");
+		run($argv[$i], "mkdir -p scripts");
 		exec("scp target/scheduler-libs.jar $argv[$i]:~/code/");
 		exec("scp target/scheduler-1.0*.jar $argv[$i]:~/code/");
+		exec("scp scripts/* $argv[$i]:~/scripts/");
 	}
 }
 
 function kill() {
 	global $argv;
-	for($i=2; $i<count($argv); $i++) {
+	for($i=1; $i<count($argv); $i++) {
 		run($argv[$i], "killall java");
 	}
-
 }
 
 function deploy() {
-	global $argv;
-	exec("mvn package");
-	for($i=2; $i<count($argv); $i++) {
-		exec("scp target/scheduler-1.0*.jar $argv[$i]:~/code/");
+	global $workload, $scheduler, $cluster ;
+	$array = array($workload, $scheduler, $cluster);
+	//exec("mvn package");
+	foreach($array as $machine) {
+		exec("scp target/scheduler-1.0*.jar $machine:~/code/");
+		exec("scp scripts/* $machine:~/scripts/");
 	}
 	//exec("scp target/scheduler-libs.jar $argv[$i]:~/code/");
 	//run($workload, "")
 }
 
 function start() {
-	//global $workload, $scheduler, $cluster, $schedulerAddress ;
-	echo $workload . "\n" . $scheduler . "\n" . $cluster . "\n";
+	global $workload, $scheduler, $cluster, $schedulerAddress, $experiment ;
+	//echo $workload . "\n" . $scheduler . "\n" . $cluster . "\n";
 	// start nohup schduler
-	run($scheduler, "nohup java -cp code/scheduler-1.0-SNAPSHOT.jar:code/scheduler-libs.jar edu.illinois.cs.srg.scheduler.Scheduler > nohup.out 2>&1 &");
+	runSudo($scheduler, "sh scripts/scheduler.sh");
 	// sleep - 1
 	sleep(1);
 	// start nohup cluster
-	run($cluster, "nohup java -cp code/scheduler-1.0-SNAPSHOT.jar:code/scheduler-libs.jar edu.illinois.cs.srg.cluster.ClusterEmulator $schedulerAddress > nohup.out 2>&1 &");
+	runSudo($cluster, "sh scripts/cluster.sh $experiment $schedulerAddress");
 	// sleep - wait a lot
-	sleep(5);
+	sleep(1);
 	// start workload generator
-	run($workload, "nohup java -cp code/scheduler-1.0-SNAPSHOT.jar:code/scheduler-libs.jar edu.illinois.cs.srg.workload.WorkloadGenerator $schedulerAddress > nohup.out 2>&1 &");
+	runSudo($workload, "sh scripts/workload.sh $experiment $schedulerAddress");
 }
 
 #run("gourav@172.22.138.119", "ls -l");
 
 function run($server, $command) {
 	$command = "ssh $server '$command'";
+	echo $command . "\n";
+	exec($command, $output);
+	//print_r($output);
+	//echo "\n";
+}
+
+function runSudo($server, $command) {
+	$command = "ssh -t $server '$command'";
 	echo $command . "\n";
 	exec($command, $output);
 	//print_r($output);
