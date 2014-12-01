@@ -9,6 +9,7 @@ import java.io.*;
 import java.net.Socket;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Created by gourav on 11/15/14.
@@ -52,7 +53,7 @@ public class Node implements Runnable {
     this.node = new Thread(this);
     this.node.start();
 
-    pendingRequests = new LinkedList<RequestInfo>();
+    pendingRequests = new ConcurrentLinkedQueue<RequestInfo>();
     requestLock = new Object();
 
     Debugger.increment();
@@ -85,30 +86,33 @@ public class Node implements Runnable {
         }
 
         // no lock required here
+
         boolean success = false;
+
         while (pendingRequests.size() > 0) {
           RequestInfo requestInfo = pendingRequests.poll();
           if (requestInfo.request.getJobID() == placementResponse.getJobID() &&
             requestInfo.request.getIndex() == placementResponse.getIndex()) {
 
-            if (requestInfo.jobHandler.shouldIKnock()) {
-              requestInfo.jobHandler.addResponse(placementResponse);
-              synchronized (requestInfo.jobHandler) {
+            synchronized (requestInfo.jobHandler) {
+              if (requestInfo.jobHandler.shouldIKnock()) {
+                requestInfo.jobHandler.addResponse(placementResponse);
                 requestInfo.jobHandler.notify();
+              } else {
+                LOG.error("{}: JobHandler do not want the response no more", this);
               }
-            } else {
-              LOG.error("{}: JobHandler do not want the response no more", this);
             }
-
             success = true;
             break;
           } else {
-            LOG.error("{} is not compatible with {}", placementResponse, requestInfo.request);
+            // request should have matched.
+            LOG.error("ERROR 2");
           }
         }
 
         if (!success) {
-          LOG.error("{} does not have matching pending request.", placementResponse);
+          // there should have been a request.
+          LOG.error("ERROR 1", placementResponse);
         }
       }
     } catch (ClassNotFoundException e) {
@@ -168,5 +172,13 @@ public class Node implements Runnable {
       this.jobHandler = jobHandler;
       this.request = request;
     }
+  }
+
+  public double getAvailableCPU() {
+    return availableCPU;
+  }
+
+  public double getAvailableMemory() {
+    return availableMemory;
   }
 }

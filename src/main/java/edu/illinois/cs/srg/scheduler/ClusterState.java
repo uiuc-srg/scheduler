@@ -35,6 +35,14 @@ public class ClusterState {
     return nodeList.get(random.nextInt(nodeList.size()));
   }
 
+  public Node get(int index) {
+    return nodeList.get(index);
+  }
+
+  public int size() {
+    return nodeList.size();
+  }
+
   @Deprecated
   // Need to provide concurrency control
   public Iterator<Node> getIterator() {

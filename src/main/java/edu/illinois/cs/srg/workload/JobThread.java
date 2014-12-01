@@ -30,22 +30,23 @@ public class JobThread implements Runnable {
 
   @Override
   public void run() {
-    try {
-      long sentTime = System.currentTimeMillis();
-      ScheduleResponse response = sendRequest(request);
-      long receiveTime = System.currentTimeMillis();
+    long sentTime = System.currentTimeMillis();
+    ScheduleResponse response = null;
 
+    try {
+      response = sendRequest(request);
       if (request.getTasks().size() != response.getSentTime().size()) {
         log.error("{}: response size does not match request size");
       }
-
+    } catch (IOException e) {
+      response = ScheduleResponse.createFailedResponse(request);
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
+    long receiveTime = System.currentTimeMillis();
+    try {
       write(response, sentTime, receiveTime);
     } catch (IOException e) {
-      synchronized (requestGenerator.errorLock) {
-        requestGenerator.errors++;
-      }
-      e.printStackTrace();
-    } catch (ClassNotFoundException e) {
       e.printStackTrace();
     }
   }

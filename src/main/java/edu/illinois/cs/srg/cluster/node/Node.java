@@ -119,6 +119,8 @@ public class Node implements Runnable {
             //LOG.debug("Added task {}", request);
             tasks.add(new Task(request.getJobID(), request.getIndex(), request.getTaskInfo()));
             resourceLock.notify();
+          } else {
+            //LOG.warn("total {}, {} used {}, {}, required {}, {}", cpu, memory, cpuUsed, memoryUsed, request.getTaskInfo().getMemory(), request.getTaskInfo().getCpu());
           }
         }
 

@@ -4,6 +4,11 @@ import edu.illinois.cs.srg.cluster.ClusterEmulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
 /**
  * Created by gourav on 11/14/14.
  */
@@ -12,7 +17,8 @@ public class Killer implements Runnable {
 
   Node node;
 
-  public Killer(Node node) {
+
+  public Killer(Node node) throws IOException {
     this.node = node;
   }
 
@@ -26,6 +32,15 @@ public class Killer implements Runnable {
           Task task = node.tasks.poll();
           //LOG.debug("Killed task {}", task);
           node.release(task.memory, task.cpu);
+          long actualDuration = System.currentTimeMillis() - task.startTime;
+          try {
+            synchronized (ClusterEmulator.killLock) {
+              ClusterEmulator.kills.write(actualDuration + ", " + task.duration);
+              ClusterEmulator.kills.newLine();
+            }
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
         }
 
         // sleep

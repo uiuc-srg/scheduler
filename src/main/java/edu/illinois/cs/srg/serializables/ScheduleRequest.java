@@ -32,6 +32,7 @@ public class ScheduleRequest implements Serializable {
 
     int index = 0;
     for (long duration : googleJob.getDurations()) {
+      // need to convert duration into milli-seconds.
       tasks.put(index, new TaskInfo(cpu, memory, duration / 1000 / speed));
       index++;
     }

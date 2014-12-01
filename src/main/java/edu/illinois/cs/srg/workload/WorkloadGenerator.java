@@ -39,7 +39,7 @@ public class WorkloadGenerator {
 
 
       //Thread requestGenerator = new Thread(new DefaultRequestGenerator("default", schedulerAddress, experiment));
-      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, 1*2*60*1000, 100));
+      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, 4*60*60*1000, 100));
       requestGenerator.start();
       requestGenerator.join();
 

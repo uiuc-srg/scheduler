@@ -11,6 +11,8 @@ public class Task implements Comparable<Task> {
   double cpu;
   double memory;
   long endTimestamp;
+  long duration;
+  long startTime;
 
   /**
    * @param jobID
@@ -25,6 +27,8 @@ public class Task implements Comparable<Task> {
     this.cpu = cpu;
     this.memory = memory;
     this.endTimestamp = System.currentTimeMillis() + duration;
+    this.duration = duration;
+    this.startTime = System.currentTimeMillis();
   }
 
   public Task(long jobID, int index, TaskInfo taskInfo) {
@@ -33,6 +37,8 @@ public class Task implements Comparable<Task> {
     this.cpu = taskInfo.getCpu();
     this.memory = taskInfo.getMemory();
     this.endTimestamp = System.currentTimeMillis() + taskInfo.getDuration();
+    this.duration = taskInfo.getDuration();
+    this.startTime = System.currentTimeMillis();
   }
 
   @Override

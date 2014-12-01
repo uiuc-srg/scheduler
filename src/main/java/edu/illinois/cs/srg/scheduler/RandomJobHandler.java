@@ -16,9 +16,9 @@ public class RandomJobHandler extends AbstractJobHandler {
   }
 
   @Override
-  public Map<Integer, Node> schedule(ScheduleRequest scheduleRequest) {
+  public Map<Integer, Node> schedule(Map<Integer, TaskInfo> tasks) {
     Map<Integer, Node> schedule = Maps.newHashMap();
-    for (Map.Entry<Integer, TaskInfo> task : scheduleRequest.getTasks().entrySet()) {
+    for (Map.Entry<Integer, TaskInfo> task : tasks.entrySet()) {
       schedule.put(task.getKey(), clusterState.getRandom());
     }
     return schedule;

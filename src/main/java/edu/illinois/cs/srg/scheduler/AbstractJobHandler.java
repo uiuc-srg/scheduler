@@ -2,6 +2,7 @@ package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import edu.illinois.cs.srg.serializables.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,7 +39,7 @@ public abstract class AbstractJobHandler implements Runnable {
     this.jobID = 0;
   }
 
-  public abstract Map<Integer, Node> schedule(ScheduleRequest scheduleRequest);
+  public abstract Map<Integer, Node> schedule(Map<Integer, TaskInfo> tasks);
 
   @Override
   public void run() {
@@ -56,50 +58,69 @@ public abstract class AbstractJobHandler implements Runnable {
         return;
       }
 
-      Map<Integer, Node> schedule = schedule(request);
+      Map<Integer, TaskInfo> tasks = new HashMap<Integer, TaskInfo>(request.getTasks());
 
-      if (schedule.size() != request.getTasks().size()) {
+      Map<Integer, Node> schedule = schedule(tasks);
+
+
+      if (schedule.size() != tasks.size()) {
         log.error("{}: schedule size does not match request size");
       }
 
       Map<Integer, Long> sentTime = Maps.newHashMap();
+      Map<Integer, Boolean> results = Maps.newHashMap();
+      Map<Integer, Long> receiveTime = Maps.newHashMap();
+
+
       for (Map.Entry<Integer, Node> entry : schedule.entrySet()) {
         Node node = entry.getValue();
-        TaskInfo taskInfo = request.getTasks().get(entry.getKey());
-        sentTime.put(entry.getKey(), node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo)));
+        if (node == null) {
+          sentTime.put(entry.getKey(), new Long(0));
+          receiveTime.put(entry.getKey(), new Long(0));
+          results.put(entry.getKey(), false);
+          tasks.remove(entry.getKey());
+        } else {
+          TaskInfo taskInfo = tasks.get(entry.getKey());
+          sentTime.put(entry.getKey(), node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo)));
+        }
       }
 
       //log.debug("{}: waiting for results.", this);
       int result = ScheduleResponse.SUCCESS;
       long startTime = System.currentTimeMillis();
-      try {
-        while (placementResponses.size() < schedule.size() &&
+      synchronized (this) {
+        while (placementResponses.size() < tasks.size() &&
           Constants.TIMEOUT - (System.currentTimeMillis() - startTime) > 0) {
           try {
-            synchronized (this) {
-              this.wait(Constants.TIMEOUT - (System.currentTimeMillis() - startTime));
-            }
+            this.wait(Constants.TIMEOUT - (System.currentTimeMillis() - startTime));
+            //this.wait();
           } catch (InterruptedException e) {
+            e.printStackTrace();
+          } catch (IllegalArgumentException e) {
             e.printStackTrace();
           }
         }
-      } catch (IllegalArgumentException e) {
-        e.printStackTrace();
+        waiting = false;
       }
-      if (placementResponses.size() < schedule.size()) {
+
+      if (placementResponses.size() < tasks.size()) {
         result = ScheduleResponse.FAIL;
         log.error("{}: timed-out while waiting for response.", this);
       } else {
         //log.debug("{}: got all results", this);
       }
-      waiting = false;
+
 
       // create n write response
-      Map<Integer, Boolean> results = Maps.newHashMap();
-      Map<Integer, Long> receiveTime = Maps.newHashMap();
       for (PlacementResponse placementResponse : placementResponses) {
         results.put(placementResponse.getIndex(), placementResponse.getResult());
         receiveTime.put(placementResponse.getIndex(), placementResponse.getReceiveTime());
+        tasks.remove(placementResponse.getIndex());
+      }
+
+      for (Map.Entry<Integer, TaskInfo> entry : tasks.entrySet()) {
+        results.put(entry.getKey(), false);
+        receiveTime.put(entry.getKey(), new Long(0));
       }
 
       response.addResult(results, sentTime, receiveTime, result);

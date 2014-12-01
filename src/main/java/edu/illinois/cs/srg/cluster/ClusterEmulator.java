@@ -31,6 +31,9 @@ public class ClusterEmulator {
 
   public static long startTime;
 
+  public static BufferedWriter kills;
+  public static Object killLock;
+
   public ClusterEmulator(String experiment, String schedulerAddress, int schedulerPort) throws IOException {
     this.experiment = experiment;
     this.schedulerAddress = schedulerAddress;
@@ -38,12 +41,15 @@ public class ClusterEmulator {
     this.threads = Sets.newHashSet();
     this.nodes = Sets.newHashSet();
 
-    logdir = System.getProperty("user.home") + "/logs/" + experiment + "/cluster";
+    logdir = System.getProperty("user.home") + "/logs/" + experiment;
 
     File dir = new File(logdir);
     dir.mkdirs();
 
     monitor = new Thread(new ClusterMonitor(System.getProperty("user.home") + "/logs/" + experiment + "/monitor"));
+
+    kills = new BufferedWriter(new FileWriter(new File(logdir + "/kills")));
+    killLock = new Object();
   }
 
   public void homogeneousCluster(int numberNodes) {
@@ -92,7 +98,7 @@ public class ClusterEmulator {
 
     startTime = System.currentTimeMillis();
     //homogeneousCluster(2);
-    heterogeneousCluster(60);
+    heterogeneousCluster(6000);
 
     LOG.debug("All nodes started.");
     for (Thread node : threads) {
@@ -104,7 +110,10 @@ public class ClusterEmulator {
     }
     long totalSeconds = (System.currentTimeMillis() - startTime) / 1000;
 
+
+
     try {
+      kills.close();
       BufferedWriter writer = new BufferedWriter(new FileWriter(new File(System.getProperty("user.home") + "/logs/" + experiment + "/utilization")));
       double totalCpu = 0;
       double totalMemory = 0;
@@ -117,7 +126,7 @@ public class ClusterEmulator {
         lastMemoryUsage.put(node.getId(), 0.0);
       }
 
-      DecimalFormat formatter = new DecimalFormat("##.##");
+      //DecimalFormat formatter = new DecimalFormat("##.##");
       long offset = -1;
       for (long time = 0; time <= totalSeconds; time++) {
         double usedCpu = 0;
@@ -137,7 +146,7 @@ public class ClusterEmulator {
         double cpuUtil = usedCpu / totalCpu;
         double memoryUtil = usedMemory / totalMemory;
         if (offset != -1) {
-          writer.write((time - offset) + ", " + formatter.format(cpuUtil) + ", " + formatter.format(memoryUtil));
+          writer.write((time - offset) + ", " + cpuUtil + ", " + memoryUtil);
           writer.newLine();
         }
       }

@@ -1,6 +1,7 @@
 package edu.illinois.cs.srg.workload;
 
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
+import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,9 +67,10 @@ public abstract class AbstractRequestGenerator implements Runnable {
         }
         Thread job = new Thread(new JobThread(request, this));
         job.start();
+
       }
       try {
-        Thread.sleep(FINISH_WAIT);
+        Thread.sleep(2* Constants.TIMEOUT);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }

@@ -1,6 +1,8 @@
 package edu.illinois.cs.srg.serializables;
 
 
+import com.google.common.collect.Maps;
+
 import java.io.Serializable;
 import java.util.Map;
 
@@ -60,5 +62,19 @@ public class ScheduleResponse implements Serializable {
   public String toString() {
     return new StringBuilder("ScheduleResponse[").append(jobID).append(", ")
       .append(result).append("]").append(results).toString();
+  }
+
+  public static ScheduleResponse createFailedResponse(ScheduleRequest request) {
+    ScheduleResponse response = new ScheduleResponse(request.jobID, 0);
+    Map<Integer, Boolean> results = Maps.newHashMap();
+    Map<Integer, Long> sentTime = Maps.newHashMap();
+    Map<Integer, Long> receiveTime = Maps.newHashMap();
+    for (int index : request.getTasks().keySet()) {
+      results.put(index, false);
+      receiveTime.put(index, new Long(0));
+      sentTime.put(index, new Long(0));
+    }
+    response.addResult(results, sentTime, receiveTime, FAIL);
+    return response;
   }
 }

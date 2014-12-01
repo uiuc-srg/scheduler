@@ -31,7 +31,7 @@ public class JobServer implements Runnable {
       while (!Scheduler.terminate) {
         Socket connectionSocket = welcomeSocket.accept();
         Debugger.addRequest();
-        Thread jobHandler = new Thread(new RandomJobHandler(clusterState, connectionSocket));
+        Thread jobHandler = new Thread(new BasicJobHandler(clusterState, connectionSocket));
         // multipath
         jobHandler.start();
       }
