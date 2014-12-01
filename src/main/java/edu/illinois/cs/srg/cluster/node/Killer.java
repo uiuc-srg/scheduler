@@ -52,6 +52,8 @@ public class Killer implements Runnable {
           }
         } catch (InterruptedException e) {
           e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+          e.printStackTrace();
         }
       }
     }
