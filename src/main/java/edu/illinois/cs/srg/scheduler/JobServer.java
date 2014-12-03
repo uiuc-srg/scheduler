@@ -5,9 +5,12 @@ import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by gourav on 10/17/14.
@@ -18,9 +21,16 @@ public class JobServer implements Runnable {
   ClusterState clusterState;
   Map<Long, Long> throughput;
 
+
+  public final int PATH_LIMIT = 3;
+
+  ExecutorService service;
+
   public JobServer(ClusterState clusterState) {
     this.clusterState = clusterState;
     throughput = Maps.newHashMap();
+
+    service = Executors.newFixedThreadPool(PATH_LIMIT);
   }
 
   @Override
@@ -31,14 +41,29 @@ public class JobServer implements Runnable {
       while (!Scheduler.terminate) {
         Socket connectionSocket = welcomeSocket.accept();
         Debugger.addRequest();
-        Thread jobHandler = new Thread(new BasicJobHandler(clusterState, connectionSocket));
+
+        // fixed-paths
+       /*AbstractJobHandler jobHandler = new BasicJobHandler(clusterState, connectionSocket);
+        try {
+          service.execute(jobHandler);
+        } catch (Exception e) {
+          e.printStackTrace();
+          try {
+            connectionSocket.close();
+          } catch (IOException e1) {
+            // ignore
+          }
+        }*/
+
         // multipath
+        Thread jobHandler = new Thread(new BasicJobHandler(clusterState, connectionSocket));
         jobHandler.start();
       }
     } catch (Exception e) {
       log.error("{} is shutting down.", this);
       //e.printStackTrace();
     }
+    service.shutdown();
   }
 
   @Override

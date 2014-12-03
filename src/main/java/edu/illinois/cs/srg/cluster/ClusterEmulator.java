@@ -3,6 +3,7 @@ package edu.illinois.cs.srg.cluster;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.illinois.cs.srg.cluster.node.Node;
+import edu.illinois.cs.srg.scheduler.Debugger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,7 +91,6 @@ public class ClusterEmulator {
 
 
   // Initialize and start up Node Threads
-  // TODO: Read node resources from a file
   public void initialize(int numberNodes) throws IOException {
     monitor.start();
 
