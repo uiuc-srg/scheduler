@@ -2,6 +2,7 @@ package edu.illinois.cs.srg.util;
 
 import java.lang.management.ManagementFactory;
 import java.text.DecimalFormat;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -18,7 +19,7 @@ public class Noob {
     DecimalFormat format = new DecimalFormat("####.#");
     System.out.println(format.format(334.46454));*/
 
-    ExecutorService service = Executors.newFixedThreadPool(3);
+    /*ExecutorService service = Executors.newFixedThreadPool(3);
     for (int i=0; i<10; i++) {
       service.execute(new Task(i));
       try {
@@ -27,7 +28,13 @@ public class Noob {
         e.printStackTrace();
       }
     }
-    service.shutdown();
+    service.shutdown();*/
+
+    /*String str = "6486624020, 38462127, o/0PSEOQ9jWyzNMXehU3dXqePQIE2QxyxyknZMT1k4c=, , 0, ";
+    String parts[] = str.split(", ", -1);
+    System.out.print(Arrays.toString(parts));*/
+
+    System.out.println("" + (6000 % 6000));
   }
 
   static class Task implements Runnable {

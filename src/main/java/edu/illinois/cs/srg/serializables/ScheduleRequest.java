@@ -1,11 +1,15 @@
 package edu.illinois.cs.srg.serializables;
 
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import edu.illinois.cs.srg.scheduler.TaskInfo;
+import edu.illinois.cs.srg.workload.google.ConstraintInfo;
 import edu.illinois.cs.srg.workload.google.GoogleJob;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by gourav on 10/17/14.
@@ -31,9 +35,15 @@ public class ScheduleRequest implements Serializable {
     double memory = googleJob.getMemory();
 
     int index = 0;
+    List<Set<ConstraintInfo>> consFromJob = googleJob.getCons();
     for (long duration : googleJob.getDurations()) {
       // need to convert duration into milli-seconds.
-      tasks.put(index, new TaskInfo(cpu, memory, duration / 1000 / speed));
+      Set<ConstraintInfo> cons = Sets.newHashSet();
+      if (index < consFromJob.size()) {
+        cons = googleJob.getCons().get(index);
+      }
+
+      tasks.put(index, new TaskInfo(cpu, memory, duration / 1000 / speed, cons));
       index++;
     }
   }

@@ -25,10 +25,10 @@ public class CheckAllJobHandler extends AbstractJobHandler {
       TaskInfo taskInfo = entry.getValue();
       schedule.put(entry.getKey(), null);
 
-      int start = random.nextInt();
+      int start = random.nextInt(size);
       for (int i=0; i<size; i++) {
         int index = (i+start) % size;
-        Node node = clusterState.get(size);
+        Node node = clusterState.get(index);
         if (node.getAvailableCPU() >= taskInfo.cpu && node.getAvailableMemory() >= taskInfo.memory) {
           schedule.put(entry.getKey(), node);
           break;

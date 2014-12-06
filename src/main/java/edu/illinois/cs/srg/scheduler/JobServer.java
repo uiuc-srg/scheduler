@@ -56,7 +56,7 @@ public class JobServer implements Runnable {
         }*/
 
         // multipath
-        Thread jobHandler = new Thread(new BasicJobHandler(clusterState, connectionSocket));
+        Thread jobHandler = new Thread(new CheckAllJobHandler(clusterState, connectionSocket));
         jobHandler.start();
       }
     } catch (Exception e) {

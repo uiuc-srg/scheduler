@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.net.Socket;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -35,6 +36,7 @@ public class Node implements Runnable {
   Queue<RequestInfo> pendingRequests;
   Object requestLock;
 
+  Map<String, String> attributes;
 
   public Node(Socket socket) throws IOException, ClassNotFoundException {
     this.socket = socket;
@@ -49,6 +51,7 @@ public class Node implements Runnable {
     this.memory = nodeInfo.getMemory();
     this.availableCPU = this.cpu;
     this.availableMemory = this.memory;
+    this.attributes = nodeInfo.getAttributes();
 
     this.node = new Thread(this);
     this.node.start();

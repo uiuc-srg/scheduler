@@ -2,6 +2,7 @@ package edu.illinois.cs.srg.cluster;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import edu.illinois.cs.srg.cluster.node.MachineReader;
 import edu.illinois.cs.srg.cluster.node.Node;
 import edu.illinois.cs.srg.scheduler.Debugger;
 import org.slf4j.Logger;
@@ -9,11 +10,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.text.DecimalFormat;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Created by read on 10/24/14.
+ * Created by gourav on 10/24/14.
  */
 public class ClusterEmulator {
   private static final Logger LOG = LoggerFactory.getLogger(ClusterEmulator.class);
@@ -56,7 +58,7 @@ public class ClusterEmulator {
   public void homogeneousCluster(int numberNodes) {
     for (int i=0; i<numberNodes; i++) {
       try {
-        Node node = new Node(i, 0.5, 0.5, schedulerAddress, schedulerPort, logdir);
+        Node node = new Node(i, 0.5, 0.5, new HashMap<String, String>(), schedulerAddress, schedulerPort, logdir);
         nodes.add(node);
         Thread thread = new Thread(node);
         thread.start();
@@ -68,17 +70,12 @@ public class ClusterEmulator {
   }
 
   public void heterogeneousCluster(int limit) throws IOException {
-    String file = System.getProperty("user.home") + "/traces/machines";
-    BufferedReader reader = new BufferedReader(new FileReader(new File(file)));
+    MachineReader reader = new MachineReader();
+    Set<MachineReader.MachineInfo> machines = reader.getMachines(6000);
 
-    String machineLine;
-    while (((machineLine = reader.readLine()) != null) && threads.size() < limit) {
-      String[] machine = machineLine.split(", ");
-      long id = Long.parseLong(machine[0]);
-      double cpu = Double.parseDouble(machine[1]);
-      double memory = Double.parseDouble(machine[2]);
+   for (MachineReader.MachineInfo machineInfo : machines) {
       try {
-        Node node = new Node(id, cpu, memory, schedulerAddress, schedulerPort, logdir);
+        Node node = new Node(machineInfo.id, machineInfo.cpu, machineInfo.memory, machineInfo.attributes, schedulerAddress, schedulerPort, logdir);
         nodes.add(node);
         Thread thread = new Thread(node);
         thread.start();
@@ -109,8 +106,6 @@ public class ClusterEmulator {
       }
     }
     long totalSeconds = (System.currentTimeMillis() - startTime) / 1000;
-
-
 
     try {
       kills.close();

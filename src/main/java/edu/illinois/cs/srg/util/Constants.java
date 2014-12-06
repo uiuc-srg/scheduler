@@ -16,7 +16,7 @@ public class Constants {
   public static final int JOB_SERVER_PORT = 9999;
   public static final int NODE_SERVER_PORT = 10000;
 
-  public static final long HEARTBEAT_INTERVAL = 500*1000;
+  public static final long HEARTBEAT_INTERVAL = 100;
 
   public static final double OS_CPU_FRACTION = 0.2;
   public static final double OS_MEMORY_FRACTION = 0.2;
@@ -30,6 +30,11 @@ public class Constants {
   public static final int SIGTERM = -1;
 
   public static final long MONITOR_INTERVAL = 3000;
+
+  public static final int CONS_LESSER = 2;
+  public static final int CONS_GREATER = 3;
+  public static final int CONS_EQUAL = 0;
+  public static final int CONS_NOT_EQUAL = 1;
 
   public static ScheduleRequest createSIGTERMScheduleRequest() {
     return new ScheduleRequest(SIGTERM, new HashMap<Integer, TaskInfo>());
