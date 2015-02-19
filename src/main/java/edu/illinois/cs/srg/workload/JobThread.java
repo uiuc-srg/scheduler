@@ -76,6 +76,7 @@ public class JobThread implements Runnable {
     long maxSentTime = 0;
     boolean jobResult = (response.getResult() == ScheduleResponse.SUCCESS);
     long maxRecvTime = 0;
+    int maxTries = 0;
 
     for (Map.Entry<Integer, Long> entry : response.getSentTime().entrySet()) {
       int index = entry.getKey();
@@ -97,11 +98,19 @@ public class JobThread implements Runnable {
         task.append(0 + ", ");
       }
 
-      task.append(receiveTime);
+      task.append(receiveTime + ", ");
+
+      if (response.getTries().containsKey(index)) {
+        task.append(response.getTries().get(index));
+        maxTries = Math.max(maxTries, response.getTries().get(index));
+      } else {
+        task.append(0);
+      }
+
       tasks.put(index, task);
 
     }
-    job.append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(maxSentTime + ", ").append(jobResult + ", ").append(maxRecvTime + ", ").append(receiveTime);
+    job.append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(maxSentTime + ", ").append(jobResult + ", ").append(maxRecvTime + ", ").append(receiveTime + ", ").append(maxTries);
 
     synchronized (requestGenerator.writerLock) {
       requestGenerator.jobWriter.write(job.toString());

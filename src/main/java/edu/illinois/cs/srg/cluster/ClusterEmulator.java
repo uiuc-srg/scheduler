@@ -71,7 +71,7 @@ public class ClusterEmulator {
 
   public void heterogeneousCluster(int limit) throws IOException {
     MachineReader reader = new MachineReader();
-    Set<MachineReader.MachineInfo> machines = reader.getMachines(6000);
+    Set<MachineReader.MachineInfo> machines = reader.getMachines(limit);
 
    for (MachineReader.MachineInfo machineInfo : machines) {
       try {
@@ -95,7 +95,7 @@ public class ClusterEmulator {
 
     startTime = System.currentTimeMillis();
     //homogeneousCluster(2);
-    heterogeneousCluster(6000);
+    heterogeneousCluster(numberNodes);
 
     LOG.debug("All nodes started.");
     for (Thread node : threads) {
@@ -163,7 +163,7 @@ public class ClusterEmulator {
 
     try {
       ClusterEmulator emulator = new ClusterEmulator(args[0], schedulerAddress, edu.illinois.cs.srg.util.Constants.NODE_SERVER_PORT);
-      emulator.initialize(2);
+      emulator.initialize(Integer.parseInt(args[2]));
     } catch (IOException e) {
       e.printStackTrace();
     }

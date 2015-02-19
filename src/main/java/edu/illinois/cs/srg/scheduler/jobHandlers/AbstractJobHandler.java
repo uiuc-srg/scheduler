@@ -1,8 +1,8 @@
-package edu.illinois.cs.srg.scheduler;
+package edu.illinois.cs.srg.scheduler.jobHandlers;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.sun.org.apache.xpath.internal.operations.Bool;
+import edu.illinois.cs.srg.scheduler.*;
 import edu.illinois.cs.srg.serializables.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
@@ -50,7 +50,6 @@ public abstract class AbstractJobHandler implements Runnable {
       ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
       request = (ScheduleRequest) inputStream.readObject();
       this.jobID = request.getJobID();
-      ScheduleResponse response = new ScheduleResponse(request.getJobID(), System.currentTimeMillis());
       //log.info("Request: " + request);
 
       if (request.getJobID() == Constants.SIGTERM) {
@@ -59,25 +58,51 @@ public abstract class AbstractJobHandler implements Runnable {
       }
 
       Map<Integer, TaskInfo> tasks = new HashMap<Integer, TaskInfo>(request.getTasks());
+      ScheduleResponse response = schedule(tasks, request);
+      //log.info("Response: " + response);
+
+      outputStream.writeObject(response);
+      outputStream.flush();
+      //log.debug("{}: wrote the result", this);
+      inputStream.close();
+      outputStream.close();
+      socket.close();
+    } catch (IOException e) {
+      log.error("Discarding request {}", request);
+      e.printStackTrace();
+    } catch (ClassNotFoundException e) {
+      e.printStackTrace();
+    }
+  }
+
+
+  public ScheduleResponse schedule(Map<Integer, TaskInfo> tasks, ScheduleRequest request) throws IOException {
+    ScheduleResponse response = new ScheduleResponse(request.getJobID(), System.currentTimeMillis());
+    Map<Integer, Long> sentTime = Maps.newHashMap();
+    Map<Integer, Boolean> results = Maps.newHashMap();
+    Map<Integer, Long> receiveTime = Maps.newHashMap();
+    Map<Integer, Integer> tries = Maps.newHashMap();
+    int attempts = 0;
+    int result = ScheduleResponse.SUCCESS;
+    boolean outstandingRequestsPending = false;
+
+    while(tasks.size() > 0 && ++attempts <= Constants.MAX_ATTEMPTS && !outstandingRequestsPending) {
+      placementResponses = Sets.newConcurrentHashSet();
+      waiting = true;
 
       Map<Integer, Node> schedule = schedule(tasks);
-
-
       if (schedule.size() != tasks.size()) {
         log.error("{}: schedule size does not match request size");
       }
 
-      Map<Integer, Long> sentTime = Maps.newHashMap();
-      Map<Integer, Boolean> results = Maps.newHashMap();
-      Map<Integer, Long> receiveTime = Maps.newHashMap();
-
-
       for (Map.Entry<Integer, Node> entry : schedule.entrySet()) {
         Node node = entry.getValue();
+        // A null value means NOT-GONNA-SCHEDULE-IT
         if (node == null) {
           sentTime.put(entry.getKey(), new Long(0));
           receiveTime.put(entry.getKey(), new Long(0));
           results.put(entry.getKey(), false);
+          tries.put(entry.getKey(), attempts);
           tasks.remove(entry.getKey());
         } else {
           TaskInfo taskInfo = tasks.get(entry.getKey());
@@ -86,7 +111,7 @@ public abstract class AbstractJobHandler implements Runnable {
       }
 
       //log.debug("{}: waiting for results.", this);
-      int result = ScheduleResponse.SUCCESS;
+
       long startTime = System.currentTimeMillis();
       synchronized (this) {
         while (placementResponses.size() < tasks.size() &&
@@ -104,39 +129,45 @@ public abstract class AbstractJobHandler implements Runnable {
       }
 
       if (placementResponses.size() < tasks.size()) {
-        result = ScheduleResponse.FAIL;
         log.error("{}: timed-out while waiting for response.", this);
+        // ERROR State - the code is not suitable to go for another round with outstanding requests pending.
+        // Therefore, we need to exit with a few failed requests.
+        outstandingRequestsPending = true;
+        SchedulerMonitor.incrementTimeouts();
       } else {
         //log.debug("{}: got all results", this);
       }
 
-
       // create n write response
       for (PlacementResponse placementResponse : placementResponses) {
-        results.put(placementResponse.getIndex(), placementResponse.getResult());
-        receiveTime.put(placementResponse.getIndex(), placementResponse.getReceiveTime());
-        tasks.remove(placementResponse.getIndex());
+        if (placementResponse.getResult()) {
+          results.put(placementResponse.getIndex(), placementResponse.getResult());
+          receiveTime.put(placementResponse.getIndex(), placementResponse.getReceiveTime());
+          tries.put(placementResponse.getIndex(), attempts);
+          tasks.remove(placementResponse.getIndex());
+        } else {
+          //log.error("Node replied false for {}", placementResponse);
+          SchedulerMonitor.incrementAttempts();
+        }
       }
-
-      for (Map.Entry<Integer, TaskInfo> entry : tasks.entrySet()) {
-        results.put(entry.getKey(), false);
-        receiveTime.put(entry.getKey(), new Long(0));
-      }
-
-      response.addResult(results, sentTime, receiveTime, result);
-      //log.info("Response: " + response);
-      outputStream.writeObject(response);
-      outputStream.flush();
-      //log.debug("{}: wrote the result", this);
-      inputStream.close();
-      outputStream.close();
-      socket.close();
-    } catch (IOException e) {
-      log.error("Discarding request {}", request);
-      e.printStackTrace();
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
     }
+
+    if (attempts >= Constants.MAX_ATTEMPTS) {
+      log.error("Maximum attempts reached for job {}: {}", request, attempts);
+    }
+
+    if (tasks.size() > 0) {
+      result = ScheduleResponse.FAIL;
+    }
+
+    for (Map.Entry<Integer, TaskInfo> entry : tasks.entrySet()) {
+      results.put(entry.getKey(), false);
+      receiveTime.put(entry.getKey(), new Long(0));
+      tries.put(entry.getKey(), attempts);
+    }
+
+    response.addResult(results, sentTime, receiveTime, result, tries);
+    return response;
   }
 
   public void exit() throws IOException {
@@ -148,7 +179,7 @@ public abstract class AbstractJobHandler implements Runnable {
 
     PlacementRequest sigterm = Constants.createSIGTERMPlacementRequest();
 
-    for (Node node : clusterState.nodeList) {
+    for (Node node : clusterState.getNodeList()) {
       node.schedule(this, sigterm);
     }
 

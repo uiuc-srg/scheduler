@@ -1,11 +1,11 @@
 package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Maps;
+import edu.illinois.cs.srg.scheduler.jobHandlers.BasicJobHandler;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
@@ -56,7 +56,7 @@ public class JobServer implements Runnable {
         }*/
 
         // multipath
-        Thread jobHandler = new Thread(new CheckAllJobHandler(clusterState, connectionSocket));
+        Thread jobHandler = new Thread(new BasicJobHandler(clusterState, connectionSocket));
         jobHandler.start();
       }
     } catch (Exception e) {

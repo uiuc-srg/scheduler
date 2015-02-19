@@ -22,16 +22,20 @@ public class ScheduleResponse implements Serializable {
   Map<Integer, Long> sentTime;
   Map<Integer, Long> receiveTime;
 
+  //TODO: update tries
+  Map<Integer, Integer> tries;
+
   public ScheduleResponse(long jobID, long submissionTime) {
     this.jobID = jobID;
     this.submissionTime = submissionTime;
   }
 
-  public void addResult( Map<Integer, Boolean> results, Map<Integer, Long> sentTime, Map<Integer,Long> receiveTime, int result) {
+  public void addResult( Map<Integer, Boolean> results, Map<Integer, Long> sentTime, Map<Integer,Long> receiveTime, int result, Map<Integer, Integer> tries) {
     this.results = results;
     this.sentTime = sentTime;
     this.receiveTime = receiveTime;
     this.result = result;
+    this.tries = tries;
   }
 
   public long getJobID() {
@@ -58,6 +62,10 @@ public class ScheduleResponse implements Serializable {
     return receiveTime;
   }
 
+  public Map<Integer, Integer> getTries() {
+    return tries;
+  }
+
   @Override
   public String toString() {
     return new StringBuilder("ScheduleResponse[").append(jobID).append(", ")
@@ -69,12 +77,14 @@ public class ScheduleResponse implements Serializable {
     Map<Integer, Boolean> results = Maps.newHashMap();
     Map<Integer, Long> sentTime = Maps.newHashMap();
     Map<Integer, Long> receiveTime = Maps.newHashMap();
+    Map<Integer, Integer> tries = Maps.newHashMap();
     for (int index : request.getTasks().keySet()) {
       results.put(index, false);
       receiveTime.put(index, new Long(0));
       sentTime.put(index, new Long(0));
+      tries.put(index, 0);
     }
-    response.addResult(results, sentTime, receiveTime, FAIL);
+    response.addResult(results, sentTime, receiveTime, FAIL, tries);
     return response;
   }
 }

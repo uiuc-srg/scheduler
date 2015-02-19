@@ -8,6 +8,7 @@ import java.util.*;
 /**
  * Currently, contains only a set of nodes.
  * Need to provide locks too.
+ *
  * Created by gourav on 11/15/14.
  */
 public class ClusterState {
@@ -45,7 +46,12 @@ public class ClusterState {
 
   @Deprecated
   // Need to provide concurrency control
+  // Doesn't really need right now because nodes are not being added / removed. TODO in future.
   public Iterator<Node> getIterator() {
     return nodes.iterator();
+  }
+
+  public List<Node> getNodeList() {
+    return nodeList;
   }
 }

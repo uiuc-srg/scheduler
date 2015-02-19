@@ -58,7 +58,9 @@ public class ScheduleRequest implements Serializable {
 
   @Override
   public String toString() {
-    return new StringBuilder("ScheduleRequest[").append(jobID).append(",").append(tasks.size()).append("]").toString();
+    double cpu = tasks.get(0).getCpu();
+    double memory = tasks.get(0).getMemory();
+    return new StringBuilder("ScheduleRequest[").append(jobID).append(",").append(tasks.size()).append("," + cpu).append("," + memory).append("]").toString();
   }
 
 }

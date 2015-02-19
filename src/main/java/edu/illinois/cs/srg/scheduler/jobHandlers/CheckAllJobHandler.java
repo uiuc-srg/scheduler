@@ -1,6 +1,10 @@
-package edu.illinois.cs.srg.scheduler;
+package edu.illinois.cs.srg.scheduler.jobHandlers;
 
 import com.google.common.collect.Maps;
+import edu.illinois.cs.srg.scheduler.ClusterState;
+import edu.illinois.cs.srg.scheduler.Node;
+import edu.illinois.cs.srg.scheduler.TaskInfo;
+import edu.illinois.cs.srg.scheduler.jobHandlers.AbstractJobHandler;
 
 import java.net.Socket;
 import java.util.Map;

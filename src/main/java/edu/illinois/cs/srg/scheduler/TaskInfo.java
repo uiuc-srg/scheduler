@@ -10,9 +10,9 @@ import java.util.Set;
  */
 public class TaskInfo implements Serializable {
 
-  double cpu;
-  double memory;
-  long duration;
+  public double cpu;
+  public double memory;
+  public long duration;
 
   Set<ConstraintInfo> cons;
 
@@ -39,5 +39,9 @@ public class TaskInfo implements Serializable {
 
   public long getDuration() {
     return duration;
+  }
+
+  public Set<ConstraintInfo> getCons() {
+    return cons;
   }
 }
