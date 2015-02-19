@@ -1,26 +1,28 @@
-package edu.illinois.cs.srg.scheduler;
+package edu.illinois.cs.srg.scheduler.jobHandlers;
 
 import com.google.common.collect.Maps;
-import edu.illinois.cs.srg.serializables.ScheduleRequest;
+import edu.illinois.cs.srg.scheduler.ClusterState;
+import edu.illinois.cs.srg.scheduler.Node;
+import edu.illinois.cs.srg.scheduler.TaskInfo;
+import edu.illinois.cs.srg.scheduler.jobHandlers.AbstractJobHandler;
 
 import java.net.Socket;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Random;
 
 /**
- * Created by gourav on 11/30/14.
+ * Created by gourav on 2/13/15.
  */
-public class BasicJobHandler extends AbstractJobHandler {
+public class ConsistentClusterStateJobHandler extends AbstractJobHandler {
 
-  public BasicJobHandler(ClusterState clusterState, Socket socket) {
+  public ConsistentClusterStateJobHandler(ClusterState clusterState, Socket socket) {
     super(clusterState, socket);
   }
 
   @Override
   public Map<Integer, Node> schedule(Map<Integer, TaskInfo> tasks) {
+    //TODO: Use collections shuffling.
     Map<Integer, Node> schedule = Maps.newHashMap();
-    int maxTry = 10;
+    int maxTry = 1000;
 
     for (Map.Entry<Integer, TaskInfo> entry : tasks.entrySet()) {
       TaskInfo taskInfo = entry.getValue();
@@ -28,7 +30,7 @@ public class BasicJobHandler extends AbstractJobHandler {
 
       for (int i=0; i<maxTry; i++) {
         Node node = clusterState.getRandom();
-        if (node.getAvailableCPU() >= taskInfo.cpu && node.getAvailableMemory() >= taskInfo.memory) {
+        if (node.updateResource(taskInfo.cpu, taskInfo.memory)) {
           schedule.put(entry.getKey(), node);
           break;
         }

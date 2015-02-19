@@ -7,10 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Created by gourav on 11/2/14.
@@ -21,76 +18,77 @@ public class TraceReader {
   String attributesFile;
   String durationFile;
 
+  ConstraintReader constraintReader;
 
-
-  public TraceReader(String attributesFile, String durationFile) {
+  public TraceReader(String attributesFile, String durationFile, String constraintFile) throws IOException {
     this.attributesFile = attributesFile;
     this.durationFile = durationFile;
-
+    this.constraintReader = new ConstraintReader(constraintFile);
   }
 
-  public List<GoogleJob> getJobs() {
+  public List<GoogleJob> getJobs() throws IOException {
 
     List<GoogleJob> googleJobs = Lists.newArrayList();
 
-    try {
-      BufferedReader attributesReader = new BufferedReader(new FileReader(new File(attributesFile)));
-      BufferedReader durationReader = new BufferedReader(new FileReader(new File(durationFile)));
+    BufferedReader attributesReader = new BufferedReader(new FileReader(new File(attributesFile)));
+    BufferedReader durationReader = new BufferedReader(new FileReader(new File(durationFile)));
 
-      String attributeLine;
-      String durationLine;
-      int missed = 0;
+    String attributeLine;
+    String durationLine;
+    int missed = 0;
 
-      while ((attributeLine = attributesReader.readLine()) != null && (durationLine = durationReader.readLine()) != null) {
+    while ((attributeLine = attributesReader.readLine()) != null && (durationLine = durationReader.readLine()) != null) {
 
-        // create job
-        String[] attribute = attributeLine.split(" *, *");
-        String[] duration = durationLine.split(" *, *");
-        long id = Long.parseLong(attribute[0]);
-        long idFromDuration = Long.parseLong(duration[0]);
-        int numberOfTasks = (int) Double.parseDouble(attribute[1]);
-        long arrival = (long) Double.parseDouble(attribute[2]);
+      // create job
+      String[] attribute = attributeLine.split(" *, *");
+      String[] duration = durationLine.split(" *, *");
+      long id = Long.parseLong(attribute[0]);
+      long idFromDuration = Long.parseLong(duration[0]);
+      int numberOfTasks = (int) Double.parseDouble(attribute[1]);
+      long arrival = (long) Double.parseDouble(attribute[2]);
 
-        double cpu = Double.parseDouble(attribute[14]);
-        double memory = Double.parseDouble(attribute[20]);
-        Set<Long> durations = Sets.newHashSet();
-        for (int i = 1; i<duration.length; i++) {
-          durations.add(Long.parseLong(duration[i]));
-        }
-
-        // error checking
-        if (durations.size() == 0) {
-          missed++;
-          //log.warn("Skipping job {}", id);
-          continue;
-        }
-
-        googleJobs.add(new GoogleJob(id, arrival, numberOfTasks, cpu, memory, durations));
-
-        if (id != idFromDuration) {
-          log.error("Mismatch in ids: {}, {}", Arrays.toString(attribute), Arrays.toString(duration));
-          break;
-        }
+      double cpu = Double.parseDouble(attribute[14]);
+      double memory = Double.parseDouble(attribute[20]);
+      Set<Long> durations = Sets.newHashSet();
+      for (int i = 1; i<duration.length; i++) {
+        durations.add(Long.parseLong(duration[i]));
       }
-      Collections.sort(googleJobs);
-      attributesReader.close();
-      durationReader.close();
 
-      log.info("Missed: {}", missed);
-      //log.info(googleJobs + "");
+      // error checking
+      if (durations.size() == 0) {
+        missed++;
+        //log.warn("Skipping job {}", id);
+        continue;
+      }
 
-    } catch (FileNotFoundException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
+      List<Set<ConstraintInfo>> cons = constraintReader.getNextConstraint(id);
+
+      googleJobs.add(new GoogleJob(id, arrival, numberOfTasks, cpu, memory, durations, cons));
+
+      if (id != idFromDuration) {
+        log.error("Mismatch in ids: {}, {}", Arrays.toString(attribute), Arrays.toString(duration));
+        break;
+      }
     }
+    Collections.sort(googleJobs);
+    attributesReader.close();
+    durationReader.close();
+    constraintReader.close();
+
+    log.info("Missed: {}", missed);
+    //log.info(googleJobs + "");
+
+
     return googleJobs;
   }
 
-
   public static void main(String[] args) {
-    TraceReader reader = new TraceReader("/Users/gourav/scheduling/debug_attributes", "/Users/gourav/scheduling/debug_durationsNoNaN");
-    reader.getJobs();
+    try {
+      TraceReader reader = new TraceReader(System.getProperty("user.home") + "/traces/attributes", System.getProperty("user.home") + "/traces/durationsNoNaN", System.getProperty("user.home") + "/traces/constraints");
+      reader.getJobs();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
 }

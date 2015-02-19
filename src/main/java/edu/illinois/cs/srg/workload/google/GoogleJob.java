@@ -1,5 +1,6 @@
 package edu.illinois.cs.srg.workload.google;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -22,13 +23,18 @@ public class GoogleJob implements Comparable<GoogleJob> {
   // duration is in micro-seconds
   Set<Long> durations;
 
-  public GoogleJob(long id, long timestamp, int ntasks, double cpu, double memory, Set<Long> durations) {
+  List<Set<ConstraintInfo>> cons;
+
+
+
+  public GoogleJob(long id, long timestamp, int ntasks, double cpu, double memory, Set<Long> durations, List<Set<ConstraintInfo>> cons) {
     this.id = id;
     this.timestamp = timestamp;
     this.ntasks = ntasks;
     this.cpu = cpu;
     this.memory = memory;
     this.durations = durations;
+    this.cons = cons;
   }
 
   public long getId() {
@@ -53,6 +59,10 @@ public class GoogleJob implements Comparable<GoogleJob> {
 
   public Set<Long> getDurations() {
     return durations;
+  }
+
+  public List<Set<ConstraintInfo>> getCons() {
+    return cons;
   }
 
   @Override

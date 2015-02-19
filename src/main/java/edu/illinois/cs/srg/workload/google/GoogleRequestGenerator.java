@@ -38,7 +38,7 @@ public class GoogleRequestGenerator extends AbstractRequestGenerator {
 
 
     String tracedir = System.getProperty("user.home") + "/traces/";
-    TraceReader reader = new TraceReader(tracedir + "/attributes", tracedir + "/durationsNoNaN");
+    TraceReader reader = new TraceReader(tracedir + "/attributes", tracedir + "/durationsNoNaN", tracedir +"/constraints");
     googleJobs = reader.getJobs();
 
     next = Integer.MAX_VALUE;

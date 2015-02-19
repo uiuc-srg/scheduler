@@ -11,8 +11,29 @@ import java.io.IOException;
  */
 public class SchedulerMonitor extends Monitor {
 
+  static long timeouts;
+  static Object timeoutLock;
+  static long failedAttempts;
+  static Object attemptLock;
+
   public SchedulerMonitor(String file) throws IOException {
     super(file);
+    timeouts = 0;
+    timeoutLock = new Object();
+    failedAttempts = 0;
+    attemptLock = new Object();
+  }
+
+  public static void incrementTimeouts() {
+    synchronized (timeoutLock) {
+      timeouts++;
+    }
+  }
+
+  public static void incrementAttempts() {
+    synchronized (attemptLock) {
+      failedAttempts++;
+    }
   }
 
   @Override
@@ -21,7 +42,7 @@ public class SchedulerMonitor extends Monitor {
     double memoryStats = 100 * (usage / memoryMXBean.getHeapMemoryUsage().getMax());
     long threadStats = threadMXBean.getThreadCount();
     double load = operatingSystemMXBean.getSystemLoadAverage();
-    return (System.currentTimeMillis() - startTime)/1000 + ", " + formatter.format(memoryStats) + ", " + threadStats + ", " + load + ", " + Debugger.totalNodes + ", " + Debugger.totalRequests + "\n";
+    return (System.currentTimeMillis() - startTime)/1000 + ", " + formatter.format(memoryStats) + ", " + threadStats + ", " + load + ", " + Debugger.totalNodes + ", " + Debugger.totalRequests + ", " + timeouts + ", " + failedAttempts + "\n";
   }
 
   @Override

@@ -23,9 +23,23 @@ public class WorkloadGenerator {
   String experiment;
   Thread monitor;
 
+  long duration;
+  int speed;
+
   public WorkloadGenerator(String experiment, String schedulerAddress) {
     this.experiment = experiment;
     this.schedulerAddress = schedulerAddress;
+    duration = 4*60*60*1000;
+    speed = 100;
+  }
+
+  public WorkloadGenerator(String experiment, String schedulerAddress, long duration, int speed) {
+    this.experiment = experiment;
+    this.schedulerAddress = schedulerAddress;
+    this.duration = duration;
+    this.speed = speed;
+
+    log.info("Duration {} seconds, Speed {}x", duration / 1000, speed);
   }
 
   public void generate() {
@@ -39,7 +53,7 @@ public class WorkloadGenerator {
 
 
       //Thread requestGenerator = new Thread(new DefaultRequestGenerator("default", schedulerAddress, experiment));
-      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, 4*60*60*1000, 100));
+      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, duration, speed));
       requestGenerator.start();
       requestGenerator.join();
 
@@ -87,7 +101,7 @@ public class WorkloadGenerator {
     if (args.length > 1) {
       schedulerAddress = args[1];
     }
-    WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress);
+    WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress, Integer.parseInt(args[2])*1000, Integer.parseInt(args[3]));
     generator.generate();
   }
 }

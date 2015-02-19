@@ -19,7 +19,6 @@ import java.util.Queue;
 
 /**
  * Created by gourav on 9/3/14.
- * TODO: Should Node run as process or thread ?
  * TODO: Support for other resources.
  * TODO: Reserve resources for OS and scheduler programs.
  */
@@ -55,18 +54,21 @@ public class Node implements Runnable {
 
   String logdir;
 
-  private Node(long id, double cpu, double memory) {
+  Map<String, String> attributes;
+
+  private Node(long id, double cpu, double memory, Map<String, String> attributes) {
     this.id = id;
     this.cpu = cpu;
     this.memory = memory;
     this.cpuUsed = 0;
     this.memoryUsed = 0;
+    this.attributes = attributes;
 
     tasks = new PriorityQueue<Task>();
   }
 
-  public Node(long id, double cpu, double memory, String schedulerAddress, int schedulerPort, String logdir) throws IOException{
-    this(id, cpu, memory);
+  public Node(long id, double cpu, double memory, Map<String, String> attributes, String schedulerAddress, int schedulerPort, String logdir) throws IOException{
+    this(id, cpu, memory, attributes);
 
     this.socket = new Socket(schedulerAddress, schedulerPort);
     this.output = new ObjectOutputStream(socket.getOutputStream());
@@ -74,7 +76,7 @@ public class Node implements Runnable {
     this.input = new ObjectInputStream(socket.getInputStream());
 
 
-    this.output.writeObject(new NodeInfo(id, cpu, memory));
+    this.output.writeObject(new NodeInfo(id, cpu, memory, attributes));
     this.output.flush();
 
     heart = new Thread(new Heart(this));
@@ -87,8 +89,9 @@ public class Node implements Runnable {
     utilizations = Maps.newHashMap();
 
     this.logdir = logdir;
-  }
 
+    attributes = Maps.newHashMap();
+  }
 
   // TODO: Can fail without sending response.
   @Override

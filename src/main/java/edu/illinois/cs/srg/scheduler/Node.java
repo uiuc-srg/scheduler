@@ -1,5 +1,6 @@
 package edu.illinois.cs.srg.scheduler;
 
+import edu.illinois.cs.srg.scheduler.jobHandlers.AbstractJobHandler;
 import edu.illinois.cs.srg.serializables.*;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
@@ -7,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -24,6 +25,7 @@ public class Node implements Runnable {
   private double memory;
   private double availableCPU;
   private double availableMemory;
+  private Object resourceLock;
 
   // connections
   Socket socket;
@@ -35,6 +37,7 @@ public class Node implements Runnable {
   Queue<RequestInfo> pendingRequests;
   Object requestLock;
 
+  Map<String, String> attributes;
 
   public Node(Socket socket) throws IOException, ClassNotFoundException {
     this.socket = socket;
@@ -49,6 +52,9 @@ public class Node implements Runnable {
     this.memory = nodeInfo.getMemory();
     this.availableCPU = this.cpu;
     this.availableMemory = this.memory;
+    this.resourceLock = new Object();
+
+    this.attributes = nodeInfo.getAttributes();
 
     this.node = new Thread(this);
     this.node.start();
@@ -71,8 +77,10 @@ public class Node implements Runnable {
       try {
         Heartbeat heartbeat = (Heartbeat) object;
         //LOG.debug("{} for {}", heartbeat, this);
-        this.availableCPU = heartbeat.availableCPU;
-        this.availableMemory = heartbeat.availableMemory;
+        synchronized (resourceLock) {
+          this.availableCPU = heartbeat.availableCPU;
+          this.availableMemory = heartbeat.availableMemory;
+        }
       } catch (ClassCastException e) {
         PlacementResponse placementResponse = (PlacementResponse) object;
         //LOG.debug("{} for {}", placementResponse, this);
@@ -180,5 +188,20 @@ public class Node implements Runnable {
 
   public double getAvailableMemory() {
     return availableMemory;
+  }
+
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
+
+  public boolean updateResource(double cpuRequest, double memRequest) {
+    synchronized (resourceLock) {
+      if (cpuRequest <= availableCPU && memRequest <= availableMemory) {
+        availableCPU -= cpuRequest;
+        availableMemory -= memRequest;
+        return true;
+      }
+      return false;
+    }
   }
 }
