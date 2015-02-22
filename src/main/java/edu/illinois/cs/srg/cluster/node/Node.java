@@ -1,6 +1,5 @@
 package edu.illinois.cs.srg.cluster.node;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import edu.illinois.cs.srg.cluster.ClusterEmulator;
 import edu.illinois.cs.srg.serializables.NodeInfo;
@@ -12,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Queue;
@@ -129,6 +127,7 @@ public class Node implements Runnable {
 
         // write result / response
         response.addResult(result);
+        response.setSentCluster(System.currentTimeMillis());
         synchronized (connectionLock) {
           output.writeObject(response);
           output.flush();

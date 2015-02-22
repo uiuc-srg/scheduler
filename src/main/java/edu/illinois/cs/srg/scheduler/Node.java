@@ -83,6 +83,7 @@ public class Node implements Runnable {
         }
       } catch (ClassCastException e) {
         PlacementResponse placementResponse = (PlacementResponse) object;
+        placementResponse.setRecvSchedulerCluster(System.currentTimeMillis());
         //LOG.debug("{} for {}", placementResponse, this);
 
         if (placementResponse.getJobID() == Constants.SIGTERM) {
@@ -99,6 +100,7 @@ public class Node implements Runnable {
 
         while (pendingRequests.size() > 0) {
           RequestInfo requestInfo = pendingRequests.poll();
+          placementResponse.setSentSchedulerCluster(requestInfo.sentSchedulerCluster);
           if (requestInfo.request.getJobID() == placementResponse.getJobID() &&
             requestInfo.request.getIndex() == placementResponse.getIndex()) {
 
@@ -158,27 +160,27 @@ public class Node implements Runnable {
     Debugger.decrement();
   }
 
-  public long schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
-    long sentTime = 0;
+  public void schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
     synchronized (requestLock) {
       if (request.getJobID() != Constants.SIGTERM) {
-        pendingRequests.add(new RequestInfo(jobHandler, request));
+        pendingRequests.add(new RequestInfo(jobHandler, request, System.currentTimeMillis()));
       }
       this.output.writeObject(request);
       this.output.flush();
-      sentTime = System.currentTimeMillis();
     }
-    return sentTime;
+
   }
 
 
   static class RequestInfo {
     AbstractJobHandler jobHandler;
     PlacementRequest request;
+    long sentSchedulerCluster;
 
-    RequestInfo(AbstractJobHandler jobHandler, PlacementRequest request) {
+    RequestInfo(AbstractJobHandler jobHandler, PlacementRequest request, long sentSchedulerCluster) {
       this.jobHandler = jobHandler;
       this.request = request;
+      this.sentSchedulerCluster = sentSchedulerCluster;
     }
   }
 
