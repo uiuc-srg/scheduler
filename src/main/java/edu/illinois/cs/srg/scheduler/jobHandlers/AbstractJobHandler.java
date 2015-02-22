@@ -49,6 +49,7 @@ public abstract class AbstractJobHandler implements Runnable {
       outputStream.flush();
       ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
       request = (ScheduleRequest) inputStream.readObject();
+      long receiveTime = System.currentTimeMillis();
       this.jobID = request.getJobID();
       //log.info("Request: " + request);
 
@@ -58,7 +59,8 @@ public abstract class AbstractJobHandler implements Runnable {
       }
 
       Map<Integer, TaskInfo> tasks = new HashMap<Integer, TaskInfo>(request.getTasks());
-      ScheduleResponse response = schedule(tasks, request);
+      ScheduleResponse response = schedule(tasks, request, receiveTime);
+      response.setSentSchedulerWG(System.currentTimeMillis());
       //log.info("Response: " + response);
 
       outputStream.writeObject(response);
@@ -76,11 +78,13 @@ public abstract class AbstractJobHandler implements Runnable {
   }
 
 
-  public ScheduleResponse schedule(Map<Integer, TaskInfo> tasks, ScheduleRequest request) throws IOException {
-    ScheduleResponse response = new ScheduleResponse(request.getJobID(), System.currentTimeMillis());
-    Map<Integer, Long> sentTime = Maps.newHashMap();
+  public ScheduleResponse schedule(Map<Integer, TaskInfo> tasks, ScheduleRequest request, long receiveTime) throws IOException {
+    ScheduleResponse response = new ScheduleResponse(request.getJobID(), receiveTime);
+    Map<Integer, Long> sentSchedulerClusterTimes = Maps.newHashMap();
+    Map<Integer, Long> recvClusterTimes = Maps.newHashMap();
+    Map<Integer, Long> sentClusterTimes = Maps.newHashMap();
+    Map<Integer, Long> recvSchedulerClusterTimes = Maps.newHashMap();
     Map<Integer, Boolean> results = Maps.newHashMap();
-    Map<Integer, Long> receiveTime = Maps.newHashMap();
     Map<Integer, Integer> tries = Maps.newHashMap();
     int attempts = 0;
     int result = ScheduleResponse.SUCCESS;
@@ -97,16 +101,19 @@ public abstract class AbstractJobHandler implements Runnable {
 
       for (Map.Entry<Integer, Node> entry : schedule.entrySet()) {
         Node node = entry.getValue();
-        // A null value means NOT-GONNA-SCHEDULE-IT
+        // A null value means NOT-GONNA-SCHEDULE-IT GONNA-FAIL
         if (node == null) {
-          sentTime.put(entry.getKey(), new Long(0));
-          receiveTime.put(entry.getKey(), new Long(0));
+          sentSchedulerClusterTimes.put(entry.getKey(), new Long(0));
+          recvClusterTimes.put(entry.getKey(), new Long(0));
+          sentClusterTimes.put(entry.getKey(), new Long(0));
+          recvSchedulerClusterTimes.put(entry.getKey(), new Long(0));
           results.put(entry.getKey(), false);
           tries.put(entry.getKey(), attempts);
           tasks.remove(entry.getKey());
+          result = ScheduleResponse.FAIL;
         } else {
           TaskInfo taskInfo = tasks.get(entry.getKey());
-          sentTime.put(entry.getKey(), node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo)));
+          node.schedule(this, new PlacementRequest(request.getJobID(), entry.getKey(), taskInfo));
         }
       }
 
@@ -141,8 +148,12 @@ public abstract class AbstractJobHandler implements Runnable {
       // create n write response
       for (PlacementResponse placementResponse : placementResponses) {
         if (placementResponse.getResult()) {
+          sentSchedulerClusterTimes.put(placementResponse.getIndex(), placementResponse.getSentSchedulerCluster());
+          recvClusterTimes.put(placementResponse.getIndex(), placementResponse.getRecvCluster());
+          sentClusterTimes.put(placementResponse.getIndex(), placementResponse.getSentCluster());
+          recvSchedulerClusterTimes.put(placementResponse.getIndex(), placementResponse.getRecvSchedulerCluster());
+
           results.put(placementResponse.getIndex(), placementResponse.getResult());
-          receiveTime.put(placementResponse.getIndex(), placementResponse.getReceiveTime());
           tries.put(placementResponse.getIndex(), attempts);
           tasks.remove(placementResponse.getIndex());
         } else {
@@ -160,13 +171,20 @@ public abstract class AbstractJobHandler implements Runnable {
       result = ScheduleResponse.FAIL;
     }
 
+    // GONNA-FAIL
     for (Map.Entry<Integer, TaskInfo> entry : tasks.entrySet()) {
+      sentSchedulerClusterTimes.put(entry.getKey(), new Long(0));
+      recvClusterTimes.put(entry.getKey(), new Long(0));
+      sentClusterTimes.put(entry.getKey(), new Long(0));
+      recvSchedulerClusterTimes.put(entry.getKey(), new Long(0));
+
       results.put(entry.getKey(), false);
-      receiveTime.put(entry.getKey(), new Long(0));
       tries.put(entry.getKey(), attempts);
     }
-
-    response.addResult(results, sentTime, receiveTime, result, tries);
+    response.addResult(
+      sentSchedulerClusterTimes, recvClusterTimes,
+      sentClusterTimes, recvSchedulerClusterTimes,
+      results, tries, result);
     return response;
   }
 

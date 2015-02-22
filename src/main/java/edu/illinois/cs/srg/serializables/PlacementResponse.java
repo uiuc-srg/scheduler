@@ -9,12 +9,17 @@ public class PlacementResponse implements Serializable {
   long jobID;
   int index;
   boolean result;
-  long receiveTime;
+
+  long recvCluster;
+  long sentCluster;
+
+  long sentSchedulerCluster;
+  long recvSchedulerCluster;
 
   public PlacementResponse(long jobID, int index, long receiveTime) {
     this.jobID = jobID;
     this.index = index;
-    this.receiveTime =receiveTime;
+    this.recvCluster = receiveTime;
   }
 
   public long getJobID() {
@@ -29,12 +34,36 @@ public class PlacementResponse implements Serializable {
     return result;
   }
 
-  public long getReceiveTime() {
-    return receiveTime;
+  public long getRecvCluster() {
+    return recvCluster;
+  }
+
+  public long getSentCluster() {
+    return sentCluster;
   }
 
   public void addResult(boolean result) {
     this.result = result;
+  }
+
+  public void setSentCluster(long sentCluster) {
+    this.sentCluster = sentCluster;
+  }
+
+  public long getSentSchedulerCluster() {
+    return sentSchedulerCluster;
+  }
+
+  public long getRecvSchedulerCluster() {
+    return recvSchedulerCluster;
+  }
+
+  public void setSentSchedulerCluster(long sentSchedulerCluster) {
+    this.sentSchedulerCluster = sentSchedulerCluster;
+  }
+
+  public void setRecvSchedulerCluster(long recvSchedulerCluster) {
+    this.recvSchedulerCluster = recvSchedulerCluster;
   }
 
   @Override

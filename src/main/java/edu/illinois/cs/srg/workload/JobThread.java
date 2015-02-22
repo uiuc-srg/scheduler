@@ -22,20 +22,20 @@ public class JobThread implements Runnable {
   AbstractRequestGenerator requestGenerator;
   ScheduleRequest request;
 
+  long sentTimeGlobal;
+  long receiveTimeGlobal;
+
   public JobThread(ScheduleRequest request, AbstractRequestGenerator requestGenerator) {
     this.request = request;
     this.requestGenerator = requestGenerator;
-
   }
 
   @Override
   public void run() {
-    long sentTime = System.currentTimeMillis();
     ScheduleResponse response = null;
-
     try {
       response = sendRequest(request);
-      if (request.getTasks().size() != response.getSentTime().size()) {
+      if (request.getTasks().size() != response.getResults().size()) {
         log.error("{}: response size does not match request size");
       }
     } catch (IOException e) {
@@ -43,9 +43,8 @@ public class JobThread implements Runnable {
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
     }
-    long receiveTime = System.currentTimeMillis();
     try {
-      write(response, sentTime, receiveTime);
+      write(response, sentTimeGlobal, receiveTimeGlobal);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -57,10 +56,12 @@ public class JobThread implements Runnable {
     outStream.flush();
     ObjectInputStream inStream = new ObjectInputStream(clientSocket.getInputStream());
     //log.info("Request: {}", request);
+    sentTimeGlobal = System.currentTimeMillis();
     outStream.writeObject(request);
     outStream.flush();
 
     ScheduleResponse response = (ScheduleResponse) inStream.readObject();
+    receiveTimeGlobal = System.currentTimeMillis();
 
     //log.info("Response: {}", response);
     outStream.close();
@@ -69,55 +70,80 @@ public class JobThread implements Runnable {
     return response;
   }
 
+  private long maxTime(Map<Integer, Long> times) {
+    long max = 0;
+    for (long time : times.values()) {
+      max = Math.max(max, time);
+    }
+    return max;
+  }
+
+  private int maxAttempts(Map<Integer, Integer> attempts) {
+    int max = 0;
+    for (int attempt : attempts.values()) {
+      max = Math.max(max, attempt);
+    }
+    return max;
+  }
+
+  private boolean andResult(Map<Integer, Boolean> results) {
+    boolean and = true;
+    for (boolean result : results.values()) {
+      and = and && result;
+    }
+    return and;
+  }
+
+
   public void write(ScheduleResponse response, long sentTime, long receiveTime) throws IOException {
-    StringBuilder job = new StringBuilder(response.getJobID() + ", ").append(response.getResults().size() + ", ");
-    Map<Integer, StringBuilder> tasks = Maps.newHashMap();
+    long maxSentSchedulerCluster = maxTime(response.getSentCluster());
+    long maxRecvCluster = maxTime(response.getRecvCluster());
+    long maxSentCluster = maxTime(response.getSentCluster());
+    long maxRecvSchedulerCluster = maxTime(response.getRecvSchedulerCluster());
+    boolean result = andResult(response.getResults()) && (response.getResult() == ScheduleResponse.SUCCESS);
+    int maxTries = maxAttempts(response.getTries());
 
-    long maxSentTime = 0;
-    boolean jobResult = (response.getResult() == ScheduleResponse.SUCCESS);
-    long maxRecvTime = 0;
-    int maxTries = 0;
+    String job = new StringBuilder(
+      response.getJobID() + ", ")
+      .append(response.getResults().size() + ", ")
+      .append(sentTime + ", ")
+      .append(response.getRecvSchedulerWG() + ", ")
+      .append(maxSentSchedulerCluster + ", ")
+      .append(maxRecvCluster + ", ")
+      .append(maxSentCluster + ", ")
+      .append(maxRecvSchedulerCluster +", ")
+      .append(response.getSentSchedulerWG() + ", ")
+      .append(receiveTime + ", ")
+      .append(result + ", ")
+      .append(maxTries)
+      .toString();
 
-    for (Map.Entry<Integer, Long> entry : response.getSentTime().entrySet()) {
-      int index = entry.getKey();
-      StringBuilder task = new StringBuilder(response.getJobID() + ", ").append(index + ", ").append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(entry.getValue() + ", ");
-
-      maxSentTime = Math.max(maxSentTime, entry.getValue());
-
-      if (response.getResults().containsKey(index)) {
-        task.append(response.getResults().get(index) + ", ");
-        jobResult &= response.getResults().get(index);
-      } else {
-        task.append(false + ", ");
-      }
-
-      if (response.getReceiveTime().containsKey(index)) {
-        task.append(response.getReceiveTime().get(index) + ", ");
-        maxRecvTime = Math.max(maxRecvTime, response.getReceiveTime().get(index));
-      } else {
-        task.append(0 + ", ");
-      }
-
-      task.append(receiveTime + ", ");
-
-      if (response.getTries().containsKey(index)) {
-        task.append(response.getTries().get(index));
-        maxTries = Math.max(maxTries, response.getTries().get(index));
-      } else {
-        task.append(0);
-      }
+    Map<Integer, String> tasks = Maps.newHashMap();
+    for (int index : response.getResults().keySet()) {
+      String task = new StringBuilder(
+        response.getJobID() + ", ")
+        .append(index + ", ")
+        .append(sentTime + ", ")
+        .append(response.getRecvSchedulerWG() + ", ")
+        .append(response.getSentSchedulerCluster().get(index)+ ", ")
+        .append(response.getRecvCluster().get(index) + ", ")
+        .append(response.getSentCluster().get(index) + ", ")
+        .append(response.getRecvSchedulerCluster().get(index) + ", ")
+        .append(response.getSentSchedulerWG() + ", ")
+        .append(receiveTime + ", ")
+        .append(response.getResults().get(index) + ", ")
+        .append(response.getTries().get(index))
+        .toString();
 
       tasks.put(index, task);
-
     }
-    job.append(sentTime + ", ").append(response.getSubmissionTime() + ", ").append(maxSentTime + ", ").append(jobResult + ", ").append(maxRecvTime + ", ").append(receiveTime + ", ").append(maxTries);
 
     synchronized (requestGenerator.writerLock) {
-      requestGenerator.jobWriter.write(job.toString());
+      requestGenerator.jobWriter.write(job);
       requestGenerator.jobWriter.newLine();
 
-      for (StringBuilder task : tasks.values()) {
-        requestGenerator.taskWriter.write(task.toString());
+      for (String task : tasks.values()) {
+        requestGenerator.taskWriter.write(task);
         requestGenerator.taskWriter.newLine();
       }
     }

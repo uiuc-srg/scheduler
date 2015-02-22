@@ -18,24 +18,36 @@ public class ScheduleResponse implements Serializable {
   Map<Integer, Boolean> results;
   int result;
 
-  long submissionTime;
-  Map<Integer, Long> sentTime;
-  Map<Integer, Long> receiveTime;
+  long recvSchedulerWG;
+  long sentSchedulerWG;
 
-  //TODO: update tries
+  Map<Integer, Long> sentSchedulerCluster;
+  Map<Integer, Long> recvSchedulerCluster;
+
+  Map<Integer, Long> recvCluster;
+  Map<Integer, Long> sentCluster;
+
   Map<Integer, Integer> tries;
 
-  public ScheduleResponse(long jobID, long submissionTime) {
+  public ScheduleResponse(long jobID, long recvSchedulerWG) {
     this.jobID = jobID;
-    this.submissionTime = submissionTime;
+    this.recvSchedulerWG = recvSchedulerWG;
   }
 
-  public void addResult( Map<Integer, Boolean> results, Map<Integer, Long> sentTime, Map<Integer,Long> receiveTime, int result, Map<Integer, Integer> tries) {
+  public void addResult(Map<Integer, Long> sentSchedulerCluster, Map<Integer,Long> recvCluster, Map<Integer, Long> sentCluster, Map<Integer, Long> recvSchedulerCluster, Map<Integer, Boolean> results, Map<Integer, Integer> tries, int result) {
+    this.sentSchedulerWG = System.currentTimeMillis();
+    this.sentSchedulerCluster = sentSchedulerCluster;
+    this.recvCluster = recvCluster;
+    this.sentCluster = sentCluster;
+    this.recvSchedulerCluster = recvSchedulerCluster;
+
     this.results = results;
-    this.sentTime = sentTime;
-    this.receiveTime = receiveTime;
     this.result = result;
     this.tries = tries;
+  }
+
+  public void setSentSchedulerWG(long sentSchedulerWG) {
+    this.sentSchedulerWG = sentSchedulerWG;
   }
 
   public long getJobID() {
@@ -50,16 +62,28 @@ public class ScheduleResponse implements Serializable {
     return result;
   }
 
-  public long getSubmissionTime() {
-    return submissionTime;
+  public long getRecvSchedulerWG() {
+    return recvSchedulerWG;
   }
 
-  public Map<Integer, Long> getSentTime() {
-    return sentTime;
+  public long getSentSchedulerWG() {
+    return sentSchedulerWG;
   }
 
-  public Map<Integer, Long> getReceiveTime() {
-    return receiveTime;
+  public Map<Integer, Long> getSentSchedulerCluster() {
+    return sentSchedulerCluster;
+  }
+
+  public Map<Integer, Long> getRecvSchedulerCluster() {
+    return recvSchedulerCluster;
+  }
+
+  public Map<Integer, Long> getRecvCluster() {
+    return recvCluster;
+  }
+
+  public Map<Integer, Long> getSentCluster() {
+    return sentCluster;
   }
 
   public Map<Integer, Integer> getTries() {
@@ -72,19 +96,29 @@ public class ScheduleResponse implements Serializable {
       .append(result).append("]").append(results).toString();
   }
 
+  // GONNA-FAIL. Called only by WG for now.
   public static ScheduleResponse createFailedResponse(ScheduleRequest request) {
     ScheduleResponse response = new ScheduleResponse(request.jobID, 0);
+    Map<Integer, Long> sentSchedulerClusterTimes = Maps.newHashMap();
+    Map<Integer, Long> recvClusterTimes = Maps.newHashMap();
+    Map<Integer, Long> sentClusterTimes = Maps.newHashMap();
+    Map<Integer, Long> recvSchedulerClusterTimes = Maps.newHashMap();
+
     Map<Integer, Boolean> results = Maps.newHashMap();
-    Map<Integer, Long> sentTime = Maps.newHashMap();
-    Map<Integer, Long> receiveTime = Maps.newHashMap();
     Map<Integer, Integer> tries = Maps.newHashMap();
+
     for (int index : request.getTasks().keySet()) {
       results.put(index, false);
-      receiveTime.put(index, new Long(0));
-      sentTime.put(index, new Long(0));
+      sentSchedulerClusterTimes.put(index, new Long(0));
+      recvClusterTimes.put(index, new Long(0));
+      sentClusterTimes.put(index, new Long(0));
+      recvSchedulerClusterTimes.put(index, new Long(0));
       tries.put(index, 0);
     }
-    response.addResult(results, sentTime, receiveTime, FAIL, tries);
+    response.addResult(
+      sentSchedulerClusterTimes, recvClusterTimes,
+      sentClusterTimes, recvSchedulerClusterTimes,
+      results, tries, FAIL);
     return response;
   }
 }
