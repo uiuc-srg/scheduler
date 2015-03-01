@@ -66,6 +66,14 @@ public class PlacementResponse implements Serializable {
     this.recvSchedulerCluster = recvSchedulerCluster;
   }
 
+  public void setIndex(int index) {
+    this.index = index;
+  }
+
+  public void setResult(boolean result) {
+    this.result = result;
+  }
+
   @Override
   public String toString() {
     return new StringBuilder("PlacementResponse[").append(jobID).append(", ").append(index)

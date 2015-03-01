@@ -1,10 +1,9 @@
-package edu.illinois.cs.srg.scheduler.jobHandlers;
+package edu.illinois.cs.srg.scheduler.monolithic;
 
 import com.google.common.collect.Maps;
 import edu.illinois.cs.srg.scheduler.ClusterState;
 import edu.illinois.cs.srg.scheduler.Node;
 import edu.illinois.cs.srg.scheduler.TaskInfo;
-import edu.illinois.cs.srg.scheduler.jobHandlers.AbstractJobHandler;
 
 import java.net.Socket;
 import java.util.Map;
@@ -12,7 +11,7 @@ import java.util.Map;
 /**
  * Created by gourav on 10/17/14.
  */
-public class RandomJobHandler extends AbstractJobHandler {
+public class RandomJobHandler extends MonolithicJobHandler {
 
   public RandomJobHandler(ClusterState clusterState, Socket socket) {
     super(clusterState, socket);

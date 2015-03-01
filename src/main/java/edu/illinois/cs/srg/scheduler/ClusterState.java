@@ -1,6 +1,7 @@
 package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import java.util.*;
@@ -12,46 +13,48 @@ import java.util.*;
  * Created by gourav on 11/15/14.
  */
 public class ClusterState {
-  Set<Node> nodes;
-  List<Node> nodeList;
+  Map<Long, Node> nodes;
+  List<Long> ids;
 
   Object lock;
   Random random;
 
   public ClusterState() {
-    this.nodes = Sets.newConcurrentHashSet();
-    this.nodeList = Lists.newArrayList();
+    this.nodes = Maps.newConcurrentMap();
+    this.ids = Lists.newArrayList();
     lock = new Object();
     random = new Random();
   }
 
   public void add(Node node) {
     synchronized (lock) {
-      nodes.add(node);
-      nodeList.add(node);
+      nodes.put(node.getId(), node);
+      ids.add(node.getId());
     }
   }
 
+  public List<Long> getNodeIds() {
+    return new ArrayList<Long>(ids);
+  }
+
   public Node getRandom() {
-    return nodeList.get(random.nextInt(nodeList.size()));
-  }
-
-  public Node get(int index) {
-    return nodeList.get(index);
-  }
-
-  public int size() {
-    return nodeList.size();
+    return nodes.get(ids.get(random.nextInt(ids.size())));
   }
 
   @Deprecated
-  // Need to provide concurrency control
-  // Doesn't really need right now because nodes are not being added / removed. TODO in future.
-  public Iterator<Node> getIterator() {
-    return nodes.iterator();
+  public Node getIndex(int index) {
+    return nodes.get(ids.get(index));
   }
 
-  public List<Node> getNodeList() {
-    return nodeList;
+  public int size() {
+    return nodes.size();
+  }
+
+  public Node get(long id) {
+    return nodes.get(id);
+  }
+
+  public Collection<Node> getNodes() {
+    return nodes.values();
   }
 }

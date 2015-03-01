@@ -1,5 +1,6 @@
 package edu.illinois.cs.srg.scheduler;
 
+import edu.illinois.cs.srg.scheduler.monolithic.MonolithicNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +29,7 @@ public class NodeServer implements Runnable {
       while (!Scheduler.terminate) {
         Socket socket = serverSocket.accept();
         try {
-          clusterState.add(new Node(socket));
+          clusterState.add(new MonolithicNode(socket));
         } catch (ClassNotFoundException e) {
           LOG.info("{} shutting down.", this);
           //e.printStackTrace();

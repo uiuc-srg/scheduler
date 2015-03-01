@@ -1,8 +1,7 @@
 package edu.illinois.cs.srg.scheduler;
 
-import edu.illinois.cs.srg.scheduler.jobHandlers.AbstractJobHandler;
 import edu.illinois.cs.srg.serializables.*;
-import edu.illinois.cs.srg.util.Constants;
+import edu.illinois.cs.srg.serializables.monolithic.PlacementRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,29 +14,29 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Created by gourav on 11/15/14.
  */
-public class Node implements Runnable {
+public abstract class Node implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(Node.class);
 
-  private long id;
+  protected long id;
 
   // resources
-  private double cpu;
-  private double memory;
-  private double availableCPU;
-  private double availableMemory;
-  private Object resourceLock;
+  protected double cpu;
+  protected double memory;
+  protected double availableCPU;
+  protected double availableMemory;
+  protected Object resourceLock;
 
   // connections
-  Socket socket;
-  ObjectInputStream input;
-  ObjectOutputStream output;
+  protected Socket socket;
+  protected ObjectInputStream input;
+  protected ObjectOutputStream output;
 
   Thread node;
 
-  Queue<RequestInfo> pendingRequests;
-  Object requestLock;
+  protected Queue<RequestInfo> pendingRequests;
+  protected Object requestLock;
 
-  Map<String, String> attributes;
+  protected Map<String, String> attributes;
 
   public Node(Socket socket) throws IOException, ClassNotFoundException {
     this.socket = socket;
@@ -71,70 +70,20 @@ public class Node implements Runnable {
    * @return
    * @throws IOException
    */
-  public boolean update() throws IOException {
-    try {
-      Object object = input.readObject();
-      try {
-        Heartbeat heartbeat = (Heartbeat) object;
-        //LOG.debug("{} for {}", heartbeat, this);
-        synchronized (resourceLock) {
-          this.availableCPU = heartbeat.availableCPU;
-          this.availableMemory = heartbeat.availableMemory;
-        }
-      } catch (ClassCastException e) {
-        PlacementResponse placementResponse = (PlacementResponse) object;
-        placementResponse.setRecvSchedulerCluster(System.currentTimeMillis());
-        //LOG.debug("{} for {}", placementResponse, this);
+  public abstract boolean update() throws IOException;
 
-        if (placementResponse.getJobID() == Constants.SIGTERM) {
-          //LOG.debug("{}: Got SIGTERM", this);
-          if (pendingRequests.size() > 0) {
-            LOG.warn("{} shutting down with some requests pending.", this);
-          }
-          return true;
-        }
+  public abstract void schedule(AbstractJobHandler jobHandler, AbstractRequest request) throws IOException;
 
-        // no lock required here
+  protected static class RequestInfo {
+    public AbstractJobHandler jobHandler;
+    public AbstractRequest request;
+    public long sentSchedulerCluster;
 
-        boolean success = false;
-
-        while (pendingRequests.size() > 0) {
-          RequestInfo requestInfo = pendingRequests.poll();
-          placementResponse.setSentSchedulerCluster(requestInfo.sentSchedulerCluster);
-          if (requestInfo.request.getJobID() == placementResponse.getJobID() &&
-            requestInfo.request.getIndex() == placementResponse.getIndex()) {
-
-            synchronized (requestInfo.jobHandler) {
-              if (requestInfo.jobHandler.shouldIKnock()) {
-                requestInfo.jobHandler.addResponse(placementResponse);
-                requestInfo.jobHandler.notify();
-              } else {
-                LOG.error("{}: JobHandler do not want the response no more", this);
-              }
-            }
-            success = true;
-            break;
-          } else {
-            // request should have matched.
-            LOG.error("ERROR 2");
-          }
-        }
-
-        if (!success) {
-          // there should have been a request.
-          LOG.error("ERROR 1", placementResponse);
-        }
-      }
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-    } catch (NullPointerException e) {
-      e.printStackTrace();
+    public RequestInfo(AbstractJobHandler jobHandler, AbstractRequest request, long sentSchedulerCluster) {
+      this.jobHandler = jobHandler;
+      this.request = request;
+      this.sentSchedulerCluster = sentSchedulerCluster;
     }
-    return false;
-  }
-
-  public String toString() {
-    return new StringBuilder("Node[").append(id).append("]").toString();
   }
 
   @Override
@@ -160,28 +109,8 @@ public class Node implements Runnable {
     Debugger.decrement();
   }
 
-  public void schedule(AbstractJobHandler jobHandler, PlacementRequest request) throws IOException {
-    synchronized (requestLock) {
-      if (request.getJobID() != Constants.SIGTERM) {
-        pendingRequests.add(new RequestInfo(jobHandler, request, System.currentTimeMillis()));
-      }
-      this.output.writeObject(request);
-      this.output.flush();
-    }
-
-  }
-
-
-  static class RequestInfo {
-    AbstractJobHandler jobHandler;
-    PlacementRequest request;
-    long sentSchedulerCluster;
-
-    RequestInfo(AbstractJobHandler jobHandler, PlacementRequest request, long sentSchedulerCluster) {
-      this.jobHandler = jobHandler;
-      this.request = request;
-      this.sentSchedulerCluster = sentSchedulerCluster;
-    }
+  public long getId() {
+    return id;
   }
 
   public double getAvailableCPU() {
@@ -205,5 +134,9 @@ public class Node implements Runnable {
       }
       return false;
     }
+  }
+
+  public String toString() {
+    return new StringBuilder("Node[").append(id).append("]").toString();
   }
 }

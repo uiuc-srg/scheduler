@@ -3,7 +3,7 @@ package edu.illinois.cs.srg.cluster.node;
 import com.google.common.collect.Maps;
 import edu.illinois.cs.srg.cluster.ClusterEmulator;
 import edu.illinois.cs.srg.serializables.NodeInfo;
-import edu.illinois.cs.srg.serializables.PlacementRequest;
+import edu.illinois.cs.srg.serializables.monolithic.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;

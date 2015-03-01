@@ -1,10 +1,9 @@
 package edu.illinois.cs.srg.util;
 
 import edu.illinois.cs.srg.scheduler.TaskInfo;
-import edu.illinois.cs.srg.serializables.PlacementRequest;
+import edu.illinois.cs.srg.serializables.monolithic.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
-import edu.illinois.cs.srg.serializables.ScheduleResponse;
 
 import java.util.HashMap;
 
@@ -23,6 +22,7 @@ public class Constants {
 
   public static final long TIMEOUT = 100000;
   public static final int MAX_ATTEMPTS = 100;
+  public static final int SPARROW_D = 2;
 
   public static final long SCHEDULER_SIGTERM_WAIT = 2000;
   public static final long WORKLOAD_SIGTERM_WAIT = 10000;

@@ -1,4 +1,4 @@
-package edu.illinois.cs.srg.scheduler.jobHandlers;
+package edu.illinois.cs.srg.scheduler.monolithic;
 
 import com.google.common.collect.Maps;
 import edu.illinois.cs.srg.scheduler.ClusterState;
@@ -15,7 +15,7 @@ import java.util.Set;
 /**
  * Created by gourav on 12/4/14.
  */
-public class ConsJobHandler extends AbstractJobHandler {
+public class ConsJobHandler extends MonolithicJobHandler {
 
   public ConsJobHandler(ClusterState clusterState, Socket socket) {
     super(clusterState, socket);
@@ -35,7 +35,7 @@ public class ConsJobHandler extends AbstractJobHandler {
       for (int i=0; i<size; i++) {
         int index = (i+start) % size;
         //log.info("Accessing index {}", index);
-        Node node = clusterState.get(index);
+        Node node = clusterState.getIndex(index);
         if (node.getAvailableCPU() >= taskInfo.cpu && node.getAvailableMemory() >= taskInfo.memory && match(taskInfo.getCons(), node)) {
           schedule.put(entry.getKey(), node);
           break;

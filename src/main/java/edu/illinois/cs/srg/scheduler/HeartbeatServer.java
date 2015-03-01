@@ -21,7 +21,7 @@ public class HeartbeatServer implements Runnable {
   @Override
   public void run() {
     // this will keep receiving heartbeat for EVERY node.
-    while (true) {
+    /*while (true) {
       Iterator<Node> iterator = clusterState.getIterator();
       while (iterator.hasNext()) {
         try {
@@ -37,7 +37,7 @@ public class HeartbeatServer implements Runnable {
           e.printStackTrace();
         }
       }
-    }
+    }*/
   }
 
   @Override

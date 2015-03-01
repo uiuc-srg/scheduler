@@ -1,9 +1,9 @@
-package edu.illinois.cs.srg.scheduler.jobHandlers;
+package edu.illinois.cs.srg.scheduler.monolithic;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import edu.illinois.cs.srg.scheduler.*;
-import edu.illinois.cs.srg.serializables.PlacementRequest;
+import edu.illinois.cs.srg.serializables.monolithic.PlacementRequest;
 import edu.illinois.cs.srg.serializables.PlacementResponse;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
 import edu.illinois.cs.srg.serializables.ScheduleResponse;
@@ -12,73 +12,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 /**
  * Created by read on 10/24/14.
  */
-public abstract class AbstractJobHandler implements Runnable {
-  protected static final Logger log = LoggerFactory.getLogger(AbstractJobHandler.class);
+public abstract class MonolithicJobHandler extends AbstractJobHandler {
+  private static final Logger log = LoggerFactory.getLogger(MonolithicJobHandler.class);
 
-  Socket socket;
   Set<PlacementResponse> placementResponses;
-  ClusterState clusterState;
   boolean waiting = true;
-
   long jobID;
 
-  public AbstractJobHandler(ClusterState clusterState, Socket socket) {
-    this.socket = socket;
+  public MonolithicJobHandler(ClusterState clusterState, Socket socket) {
+    super(socket, clusterState);
     placementResponses = Sets.newConcurrentHashSet();
-    this.clusterState = clusterState;
     this.jobID = 0;
   }
 
   public abstract Map<Integer, Node> schedule(Map<Integer, TaskInfo> tasks);
 
-  @Override
-  public void run() {
-    ScheduleRequest request = null;
-    try {
-      ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
-      outputStream.flush();
-      ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-      request = (ScheduleRequest) inputStream.readObject();
-      long receiveTime = System.currentTimeMillis();
-      this.jobID = request.getJobID();
-      //log.info("Request: " + request);
-
-      if (request.getJobID() == Constants.SIGTERM) {
-        exit();
-        return;
-      }
-
-      Map<Integer, TaskInfo> tasks = new HashMap<Integer, TaskInfo>(request.getTasks());
-      ScheduleResponse response = schedule(tasks, request, receiveTime);
-      response.setSentSchedulerWG(System.currentTimeMillis());
-      //log.info("Response: " + response);
-
-      outputStream.writeObject(response);
-      outputStream.flush();
-      //log.debug("{}: wrote the result", this);
-      inputStream.close();
-      outputStream.close();
-      socket.close();
-    } catch (IOException e) {
-      log.error("Discarding request {}", request);
-      e.printStackTrace();
-    } catch (ClassNotFoundException e) {
-      e.printStackTrace();
-    }
-  }
-
-
   public ScheduleResponse schedule(Map<Integer, TaskInfo> tasks, ScheduleRequest request, long receiveTime) throws IOException {
+    this.jobID = request.getJobID();
     ScheduleResponse response = new ScheduleResponse(request.getJobID(), receiveTime);
     Map<Integer, Long> sentSchedulerClusterTimes = Maps.newHashMap();
     Map<Integer, Long> recvClusterTimes = Maps.newHashMap();
@@ -197,7 +154,7 @@ public abstract class AbstractJobHandler implements Runnable {
 
     PlacementRequest sigterm = Constants.createSIGTERMPlacementRequest();
 
-    for (Node node : clusterState.getNodeList()) {
+    for (Node node : clusterState.getNodes()) {
       node.schedule(this, sigterm);
     }
 
@@ -206,8 +163,10 @@ public abstract class AbstractJobHandler implements Runnable {
     log.info("Shutting down Scheduler.");
   }
 
-  public void addResponse(PlacementResponse response) {
+  @Override
+  public PlacementRequest addResponse(PlacementResponse response) {
     placementResponses.add(response);
+    return null;
   }
 
   public boolean shouldIKnock() {

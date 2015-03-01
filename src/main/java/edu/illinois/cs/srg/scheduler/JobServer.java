@@ -1,8 +1,7 @@
 package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Maps;
-import edu.illinois.cs.srg.scheduler.jobHandlers.BasicJobHandler;
-import edu.illinois.cs.srg.scheduler.jobHandlers.ConsistentClusterStateJobHandler;
+import edu.illinois.cs.srg.scheduler.monolithic.ConsistentClusterStateJobHandler;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
