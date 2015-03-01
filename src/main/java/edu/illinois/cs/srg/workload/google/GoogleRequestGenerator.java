@@ -33,12 +33,12 @@ public class GoogleRequestGenerator extends AbstractRequestGenerator {
 
   int speed;
 
-  public GoogleRequestGenerator(String name, String schedulerAddress, String experiment, long experimentTime, int speed) throws IOException {
+  public GoogleRequestGenerator(String name, String schedulerAddress, String experiment, long experimentTime, int speed, double suppressionFactor) throws IOException {
     super(name, schedulerAddress, experiment);
 
 
     String tracedir = System.getProperty("user.home") + "/traces/";
-    TraceReader reader = new TraceReader(tracedir + "/attributes", tracedir + "/durationsNoNaN", tracedir +"/constraints");
+    TraceReader reader = new TraceReader(tracedir + "/attributes", tracedir + "/durationsNoNaN", tracedir +"/constraints", suppressionFactor);
     googleJobs = reader.getJobs();
 
     next = Integer.MAX_VALUE;
@@ -99,7 +99,7 @@ public class GoogleRequestGenerator extends AbstractRequestGenerator {
 
   public static void main(String[] args) {
     try {
-      GoogleRequestGenerator requestGenerator = new GoogleRequestGenerator("google", "127.0.0.1", "test", 100000, 10);
+      GoogleRequestGenerator requestGenerator = new GoogleRequestGenerator("google", "127.0.0.1", "test", 100000, 10, 1.0);
       while (true) {
         ScheduleRequest request = requestGenerator.getNextRequest();
         System.out.println(request);

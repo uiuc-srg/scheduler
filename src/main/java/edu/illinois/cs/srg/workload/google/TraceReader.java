@@ -20,10 +20,20 @@ public class TraceReader {
 
   ConstraintReader constraintReader;
 
+  double suppressionFactor;
+
   public TraceReader(String attributesFile, String durationFile, String constraintFile) throws IOException {
     this.attributesFile = attributesFile;
     this.durationFile = durationFile;
     this.constraintReader = new ConstraintReader(constraintFile);
+    this.suppressionFactor = 1;
+  }
+
+  public TraceReader(String attributesFile, String durationFile, String constraintFile, double suppressionFactor) throws IOException {
+    this.attributesFile = attributesFile;
+    this.durationFile = durationFile;
+    this.constraintReader = new ConstraintReader(constraintFile);
+    this.suppressionFactor = suppressionFactor;
   }
 
   public List<GoogleJob> getJobs() throws IOException {
@@ -47,8 +57,8 @@ public class TraceReader {
       int numberOfTasks = (int) Double.parseDouble(attribute[1]);
       long arrival = (long) Double.parseDouble(attribute[2]);
 
-      double cpu = Double.parseDouble(attribute[14]);
-      double memory = Double.parseDouble(attribute[20]);
+      double cpu = Double.parseDouble(attribute[14])*suppressionFactor;
+      double memory = Double.parseDouble(attribute[20])*suppressionFactor;
       Set<Long> durations = Sets.newHashSet();
       for (int i = 1; i<duration.length; i++) {
         durations.add(Long.parseLong(duration[i]));

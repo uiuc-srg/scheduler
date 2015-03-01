@@ -25,21 +25,24 @@ public class WorkloadGenerator {
 
   long duration;
   int speed;
+  double suppressionFactor;
 
   public WorkloadGenerator(String experiment, String schedulerAddress) {
     this.experiment = experiment;
     this.schedulerAddress = schedulerAddress;
     duration = 4*60*60*1000;
     speed = 100;
+    suppressionFactor = 1;
   }
 
-  public WorkloadGenerator(String experiment, String schedulerAddress, long duration, int speed) {
+  public WorkloadGenerator(String experiment, String schedulerAddress, long duration, int speed, double suppressionFactor) {
     this.experiment = experiment;
     this.schedulerAddress = schedulerAddress;
     this.duration = duration;
     this.speed = speed;
+    this.suppressionFactor = suppressionFactor;
 
-    log.info("Duration {} seconds, Speed {}x", duration / 1000, speed);
+    log.info("Duration {} seconds, Speed {}x, Suppression {}x", duration / 1000, speed, suppressionFactor);
   }
 
   public void generate() {
@@ -53,7 +56,7 @@ public class WorkloadGenerator {
 
 
       //Thread requestGenerator = new Thread(new DefaultRequestGenerator("default", schedulerAddress, experiment));
-      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, duration, speed));
+      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, duration, speed, suppressionFactor));
       requestGenerator.start();
       requestGenerator.join();
 
@@ -101,7 +104,11 @@ public class WorkloadGenerator {
     if (args.length > 1) {
       schedulerAddress = args[1];
     }
-    WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress, Integer.parseInt(args[2])*1000, Integer.parseInt(args[3]));
+    double suppression = 1.0;
+    if (args.length > 4) {
+      suppression = Double.parseDouble(args[4]) / Double.parseDouble(args[5]);
+    }
+    WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress, Integer.parseInt(args[2])*1000, Integer.parseInt(args[3]), suppression);
     generator.generate();
   }
 }
