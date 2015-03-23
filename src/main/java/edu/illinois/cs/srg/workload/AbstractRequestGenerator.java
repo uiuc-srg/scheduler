@@ -11,7 +11,7 @@ import java.io.*;
  * Created by gourav on 11/22/14.
  */
 public abstract class AbstractRequestGenerator implements Runnable {
-  private static final int MAX_ERROR = 5;
+  public static final int MAX_ERROR = 5;
   private static final long FINISH_WAIT = 5000;
 
   private final Logger log;

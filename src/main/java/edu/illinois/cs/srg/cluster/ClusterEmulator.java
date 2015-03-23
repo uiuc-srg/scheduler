@@ -58,7 +58,7 @@ public class ClusterEmulator {
   public void homogeneousCluster(int numberNodes) {
     for (int i=0; i<numberNodes; i++) {
       try {
-        Node node = new Node(i, 0.5, 0.5, new HashMap<String, String>(), schedulerAddress, schedulerPort, logdir);
+        Node node = new Node(i, 0.5, 0.2493, new HashMap<String, String>(), schedulerAddress, schedulerPort, logdir);
         nodes.add(node);
         Thread thread = new Thread(node);
         thread.start();
@@ -94,8 +94,8 @@ public class ClusterEmulator {
 
 
     startTime = System.currentTimeMillis();
-    //homogeneousCluster(2);
-    heterogeneousCluster(numberNodes);
+    homogeneousCluster(numberNodes);
+    //heterogeneousCluster(numberNodes);
 
     LOG.debug("All nodes started.");
     for (Thread node : threads) {

@@ -17,84 +17,19 @@ import java.util.List;
 public class GoogleRequestGenerator extends AbstractRequestGenerator {
   private static final Logger log = LoggerFactory.getLogger(GoogleRequestGenerator.class);
 
-  List<GoogleJob> googleJobs;
-
-  // micro-seconds
-  long offset;
-
-  // milli-seconds
-  long startTime;
-
-  int next;
-
-  BufferedWriter timestampWriter;
-
-  long experimentTime;
-
-  int speed;
+  GoogleTracePlayer player;
 
   public GoogleRequestGenerator(String name, String schedulerAddress, String experiment, long experimentTime, int speed, double suppressionFactor) throws IOException {
     super(name, schedulerAddress, experiment);
 
+    player = new GoogleTracePlayer(name, experiment, experimentTime, speed, suppressionFactor);
 
-    String tracedir = System.getProperty("user.home") + "/traces/";
-    TraceReader reader = new TraceReader(tracedir + "/attributes", tracedir + "/durationsNoNaN", tracedir +"/constraints", suppressionFactor);
-    googleJobs = reader.getJobs();
-
-    next = Integer.MAX_VALUE;
-    offset = -1;
-    startTime = -1;
-
-    for (int i=0; i< googleJobs.size(); i++) {
-      if (googleJobs.get(i).timestamp > 0) {
-        offset = googleJobs.get(i).timestamp;
-        next = i;
-        break;
-      }
-    }
-
-    timestampWriter = new BufferedWriter(new FileWriter(new File(logdir + "/" + name + ".timestamps")));
-
-    this.experimentTime = experimentTime;
-
-    this.speed = speed;
 
   }
 
   @Override
   public ScheduleRequest getNextRequest() {
-
-    if (next >= googleJobs.size() || (startTime != -1 && (System.currentTimeMillis() - startTime) > experimentTime)) {
-      try {
-        timestampWriter.close();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-      return null;
-    }
-
-    if (startTime == -1) {
-      startTime = System.currentTimeMillis();
-    } else {
-      long interArrivalInterval = (googleJobs.get(next).timestamp - offset) / 1000 / speed;
-      try {
-        Thread.sleep(interArrivalInterval - (System.currentTimeMillis() - startTime ));
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      } catch (IllegalArgumentException e) {
-        // ignore
-      }
-      try {
-        timestampWriter.write((System.currentTimeMillis() - startTime) + ", " + interArrivalInterval );
-        timestampWriter.newLine();
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }
-
-    ScheduleRequest request = new ScheduleRequest(googleJobs.get(next), speed);
-    next++;
-    return request;
+    return player.getNextJob();
   }
 
   public static void main(String[] args) {

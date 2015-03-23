@@ -70,7 +70,7 @@ public class JobThread implements Runnable {
     return response;
   }
 
-  private long maxTime(Map<Integer, Long> times) {
+  public static long maxTime(Map<Integer, Long> times) {
     long max = 0;
     for (long time : times.values()) {
       max = Math.max(max, time);
@@ -78,7 +78,7 @@ public class JobThread implements Runnable {
     return max;
   }
 
-  private int maxAttempts(Map<Integer, Integer> attempts) {
+  public static int maxAttempts(Map<Integer, Integer> attempts) {
     int max = 0;
     for (int attempt : attempts.values()) {
       max = Math.max(max, attempt);
@@ -86,7 +86,7 @@ public class JobThread implements Runnable {
     return max;
   }
 
-  private boolean andResult(Map<Integer, Boolean> results) {
+  public static boolean andResult(Map<Integer, Boolean> results) {
     boolean and = true;
     for (boolean result : results.values()) {
       and = and && result;

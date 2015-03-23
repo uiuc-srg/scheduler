@@ -29,10 +29,14 @@ function kill() {
 }
 
 function deploy() {
-	global $workload, $scheduler, $cluster ;
-	$array = array($workload, $scheduler, $cluster);
+	echo "deploying\n";
+	global $argv;
+	//$array = array($workload, $scheduler, $cluster);
 	//exec("mvn package");
-	foreach($array as $machine) {
+	//foreach($array as $machine) {
+	for($i=1; $i<count($argv); $i++) {
+		$machine = $argv[$i];
+		echo "scp target/scheduler-1.0*.jar $machine:~/code/\n";
 		exec("scp target/scheduler-1.0*.jar $machine:~/code/");
 		exec("scp scripts/* $machine:~/scripts/");
 	}
