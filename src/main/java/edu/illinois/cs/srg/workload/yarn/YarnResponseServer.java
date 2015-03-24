@@ -27,8 +27,8 @@ public class YarnResponseServer implements Runnable {
   protected String name;
   protected String experiment;
 
-  protected BufferedWriter jobWriter;
-  protected BufferedWriter taskWriter;
+  public static BufferedWriter jobWriter;
+  public static BufferedWriter taskWriter;
   protected Object writerLock;
 
   int errors;

@@ -1,6 +1,7 @@
 package edu.illinois.cs.srg.workload.yarn;
 
 import com.google.common.collect.Maps;
+import edu.illinois.cs.srg.util.Constants;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.yarn.api.records.*;
 import org.slf4j.Logger;
@@ -34,7 +35,6 @@ import java.util.Vector;
 public class Client implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(Client.class);
 
-  private String appMasterJar = "/tmp/jars/ApplicationMaster-1.0-SNAPSHOT.jar";
   private final String appMasterMainClass = "edu.illinois.cs.srg.ApplicationMaster";
   private final String jarsPath = "/tmp/jars/*";
 
@@ -43,10 +43,8 @@ public class Client implements Runnable {
   private String amQueue = "default";
   private int amMemory = 1024;
   private int amVCores = 0;
-  private static final String appMasterJarPath = "AppMaster.jar";
   private boolean verbose = false;
   private boolean keepContainers = false;
-  private final long clientStartTime = System.currentTimeMillis();
   private long clientTimeout = 600000;
 
   private Configuration conf;
@@ -56,6 +54,7 @@ public class Client implements Runnable {
 
   private String rmAddress = "192.17.176.12";
   private String myAddress;
+  // Not using mustangNM
   private String mustangNM = "192.17.176.12";
   private long jobID;
   private int ntasks;
@@ -192,6 +191,9 @@ public class Client implements Runnable {
       vargs.add(ntasks + "");
       for (long duration : durations.values()) {
         vargs.add(duration + "");
+        if (duration > clientTimeout) {
+          clientTimeout = duration;
+        }
       }
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
       vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
@@ -208,9 +210,9 @@ public class Client implements Runnable {
         localResources, env, commands, null, null, null);
 
       Resource capability = Resource.newInstance(amMemory, amVCores);
-      //appContext.setResource(capability);
-      ResourceRequest resourceRequest = ResourceRequest.newInstance(Priority.newInstance(amPriority), mustangNM, capability, 1, false);
-      appContext.setAMContainerResourceRequest(resourceRequest);
+      appContext.setResource(capability);
+      //ResourceRequest resourceRequest = ResourceRequest.newInstance(Priority.newInstance(amPriority), mustangNM, capability, 1, false);
+      //appContext.setAMContainerResourceRequest(resourceRequest);
       appContext.setAMContainerSpec(amContainer);
       Priority pri = Priority.newInstance(amPriority);
       appContext.setPriority(pri);
@@ -226,8 +228,10 @@ public class Client implements Runnable {
       if (monitorApplication(appId)) {
         LOG.info("App {} ran successfully", appId);
       } else {
+        YarnResponseServer.waitingJobs.remove(jobID);
         LOG.info("App {} Failed.", appId);
         if (report != null) {
+          report = yarnClient.getApplicationReport(appId);
           LOG.info("Got application report from ASM for"
             + ", appId=" + appId.getId()
             + ", appDiagnostics=" + report.getDiagnostics()
@@ -260,11 +264,12 @@ public class Client implements Runnable {
   private boolean monitorApplication(ApplicationId appId)
     throws YarnException, IOException {
 
+    LOG.info("App {} timeout - {}", appId, clientTimeout);
+    long startTime = System.currentTimeMillis();
     while (true) {
 
-      // Check app status every 1 second.
       try {
-        Thread.sleep(10000);
+        Thread.sleep(clientTimeout / 3);
       } catch (InterruptedException e) {
         LOG.debug("Thread sleep in monitoring loop interrupted");
       }
@@ -292,20 +297,20 @@ public class Client implements Runnable {
           return true;
         }
         else {
-          LOG.info("Application did finished unsuccessfully."
-            + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString());
+          //LOG.info("Application did finished unsuccessfully."
+          //  + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString());
           return false;
         }
       }
       else if (YarnApplicationState.KILLED == state
         || YarnApplicationState.FAILED == state) {
-        LOG.info("Application did not finish."
-          + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString());
+        //LOG.info("Application did not finish."
+         // + " YarnState=" + state.toString() + ", DSFinalStatus=" + dsStatus.toString());
         return false;
       }
 
-      if (System.currentTimeMillis() > (clientStartTime + clientTimeout)) {
-        LOG.info("Reached client specified timeout for application. Killing application");
+      if (System.currentTimeMillis() > (startTime + clientTimeout + 10*Constants.TIMEOUT)) {
+        LOG.info("Reached client specified timeout {} seconds for application. Killing application", (clientTimeout + Constants.TIMEOUT) / 1000);
         forceKillApplication(appId);
         return false;
       }

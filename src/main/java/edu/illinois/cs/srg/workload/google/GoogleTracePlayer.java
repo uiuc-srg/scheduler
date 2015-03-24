@@ -32,7 +32,9 @@ public class GoogleTracePlayer {
 
   int speed;
 
-  public GoogleTracePlayer(String name, String experiment, long experimentTime, int speed, double suppressionFactor) throws IOException {
+  double timeSuppressionFactor;
+
+  public GoogleTracePlayer(String name, String experiment, long experimentTime, int speed, double suppressionFactor, double timeSuppressionFactor) throws IOException {
     String tracedir = System.getProperty("user.home") + "/traces/";
     TraceReader reader = new TraceReader(tracedir + "/attributes", tracedir + "/durationsNoNaN", tracedir +"/constraints", suppressionFactor);
     googleJobs = reader.getJobs();
@@ -55,6 +57,7 @@ public class GoogleTracePlayer {
     this.experimentTime = experimentTime;
 
     this.speed = speed;
+    this.timeSuppressionFactor = timeSuppressionFactor;
   }
 
   public ScheduleRequest getNextJob() {
@@ -87,14 +90,14 @@ public class GoogleTracePlayer {
       }
     }
 
-    ScheduleRequest request = new ScheduleRequest(googleJobs.get(next), speed);
+    ScheduleRequest request = new ScheduleRequest(googleJobs.get(next), speed, timeSuppressionFactor);
     next++;
     return request;
   }
 
   public static void main(String[] args) {
     try {
-      GoogleTracePlayer player = new GoogleTracePlayer("google", "test", 100000, 10, 1.0);
+      GoogleTracePlayer player = new GoogleTracePlayer("google", "test", 100000, 10, 1.0, 1.0);
       while (true) {
         ScheduleRequest request = player.getNextJob();
         System.out.println(request);
