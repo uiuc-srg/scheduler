@@ -19,10 +19,10 @@ public class GoogleRequestGenerator extends AbstractRequestGenerator {
 
   GoogleTracePlayer player;
 
-  public GoogleRequestGenerator(String name, String schedulerAddress, String experiment, long experimentTime, int speed, double suppressionFactor) throws IOException {
+  public GoogleRequestGenerator(String name, String schedulerAddress, String experiment, long experimentTime, int speed, double suppressionFactor, double timeSuppressionFactor) throws IOException {
     super(name, schedulerAddress, experiment);
 
-    player = new GoogleTracePlayer(name, experiment, experimentTime, speed, suppressionFactor);
+    player = new GoogleTracePlayer(name, experiment, experimentTime, speed, suppressionFactor, timeSuppressionFactor);
 
 
   }
@@ -34,7 +34,7 @@ public class GoogleRequestGenerator extends AbstractRequestGenerator {
 
   public static void main(String[] args) {
     try {
-      GoogleRequestGenerator requestGenerator = new GoogleRequestGenerator("google", "127.0.0.1", "test", 100000, 10, 1.0);
+      GoogleRequestGenerator requestGenerator = new GoogleRequestGenerator("google", "127.0.0.1", "test", 100000, 10, 1.0, 1.0);
       while (true) {
         ScheduleRequest request = requestGenerator.getNextRequest();
         System.out.println(request);

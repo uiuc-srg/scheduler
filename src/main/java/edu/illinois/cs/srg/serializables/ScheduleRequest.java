@@ -28,7 +28,7 @@ public class ScheduleRequest implements Serializable {
    * Converting duration from micro-seconds to milli-seconds
    * @param googleJob
    */
-  public ScheduleRequest(GoogleJob googleJob, int speed) {
+  public ScheduleRequest(GoogleJob googleJob, int speed, double timeSuppressionFactor) {
     this.jobID = googleJob.getId();
     this.tasks = Maps.newHashMap();
     double cpu = googleJob.getCpu();
@@ -43,7 +43,7 @@ public class ScheduleRequest implements Serializable {
         cons = googleJob.getCons().get(index);
       }
 
-      tasks.put(index, new TaskInfo(cpu, memory, duration / 1000 / speed, cons));
+      tasks.put(index, new TaskInfo(cpu, memory, (long) (duration / 1000 / speed / timeSuppressionFactor), cons));
       index++;
     }
   }

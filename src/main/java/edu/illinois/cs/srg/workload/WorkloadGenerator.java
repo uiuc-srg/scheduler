@@ -26,6 +26,7 @@ public class WorkloadGenerator {
   long duration;
   int speed;
   double suppressionFactor;
+  double timeSuppressionFactor;
 
   public WorkloadGenerator(String experiment, String schedulerAddress) {
     this.experiment = experiment;
@@ -33,19 +34,21 @@ public class WorkloadGenerator {
     duration = 4*60*60*1000;
     speed = 100;
     suppressionFactor = 1;
+    timeSuppressionFactor = 1;
   }
 
-  public WorkloadGenerator(String experiment, String schedulerAddress, long duration, int speed, double suppressionFactor) {
+  public WorkloadGenerator(String experiment, String schedulerAddress, long duration, int speed, double suppressionFactor, double timeSuppressionFactor) {
     this.experiment = experiment;
     this.schedulerAddress = schedulerAddress;
     this.duration = duration;
     this.speed = speed;
     this.suppressionFactor = suppressionFactor;
+    this.timeSuppressionFactor = timeSuppressionFactor;
 
-    log.info("Duration {} seconds, Speed {}x, Suppression {}x", duration / 1000, speed, suppressionFactor);
   }
 
   public void generate() {
+    log.info("Duration {} seconds, Speed {}x, Suppression {}x, timeSuppression {}x", duration / 1000, speed, suppressionFactor, timeSuppressionFactor);
     try {
       String logdir = System.getProperty("user.home") + "/logs/" + experiment;
       File dir = new File(logdir);
@@ -56,7 +59,7 @@ public class WorkloadGenerator {
 
 
       //Thread requestGenerator = new Thread(new DefaultRequestGenerator("default", schedulerAddress, experiment));
-      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, duration, speed, suppressionFactor));
+      Thread requestGenerator = new Thread(new GoogleRequestGenerator("google", schedulerAddress, experiment, duration, speed, suppressionFactor, timeSuppressionFactor));
       requestGenerator.start();
       requestGenerator.join();
 
@@ -108,7 +111,11 @@ public class WorkloadGenerator {
     if (args.length > 4) {
       suppression = Double.parseDouble(args[4]) / Double.parseDouble(args[5]);
     }
-    WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress, Integer.parseInt(args[2])*1000, Integer.parseInt(args[3]), suppression);
+    double timeSuppressionFactor = 1.0;
+    if (args.length > 5) {
+      timeSuppressionFactor = Double.parseDouble(args[6]);
+    }
+    WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress, Integer.parseInt(args[2])*1000, Integer.parseInt(args[3]), suppression, timeSuppressionFactor);
     generator.generate();
   }
 }

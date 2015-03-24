@@ -31,17 +31,19 @@ public class YarnRequestGenerator implements Runnable {
   protected String mustangNM;
   protected String experiment;
 
-  public YarnRequestGenerator(String name, String rmAddress, String myAddress, String mustangNM, String experiment, long experimentTime, int speed, double suppressionFactor) throws IOException {
+  public static Thread responseServerThread;
+
+  public YarnRequestGenerator(String name, String rmAddress, String myAddress, String mustangNM, String experiment, long experimentTime, int speed, double suppressionFactor, double timeSuppressionFactor) throws IOException {
     this.name = name;
     this.rmAddress = rmAddress;
     this.myAddress = myAddress;
     this.mustangNM = mustangNM;
     this.experiment = experiment;
 
-    player = new GoogleTracePlayer(name, experiment, experimentTime, speed, suppressionFactor);
+    player = new GoogleTracePlayer(name, experiment, experimentTime, speed, suppressionFactor, timeSuppressionFactor);
 
     responseServer = new YarnResponseServer(name, experiment);
-    Thread responseServerThread = new Thread(responseServer);
+    responseServerThread = new Thread(responseServer);
     responseServerThread.start();
   }
 
@@ -80,6 +82,7 @@ public class YarnRequestGenerator implements Runnable {
 
     }
     log.info("YarnRequestGenerator: created {} jobs in {} seconds", nJobs, (System.currentTimeMillis() - startTime)/1000);
+    log.info("YarnRequestGenerator: Time to finish is less than {} seconds", (YarnExperiment.finishTime - System.currentTimeMillis())/1000);
     /*try {
       Thread.sleep(2* Constants.TIMEOUT);
     } catch (InterruptedException e) {

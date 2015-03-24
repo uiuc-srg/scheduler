@@ -27,6 +27,7 @@ public class YarnExperiment {
   long duration;
   int speed;
   double suppressionFactor;
+  double timeSuppressionFactor;
 
   public YarnExperiment(String experiment, String rmAddress, String myAddress, String mustangNM) {
     this.experiment = experiment;
@@ -36,9 +37,10 @@ public class YarnExperiment {
     duration = 4*60*60*1000;
     speed = 100;
     suppressionFactor = 1;
+    timeSuppressionFactor = 1;
   }
 
-  public YarnExperiment(String experiment, String rmAddress, String myAddress, String mustangNM, long duration, int speed, double suppressionFactor) {
+  public YarnExperiment(String experiment, String rmAddress, String myAddress, String mustangNM, long duration, int speed, double suppressionFactor, double timeSuppressionFactor) {
     this.experiment = experiment;
     this.rmAddress = rmAddress;
     this.myAddress = myAddress;
@@ -46,11 +48,13 @@ public class YarnExperiment {
     this.duration = duration;
     this.speed = speed;
     this.suppressionFactor = suppressionFactor;
+    this.timeSuppressionFactor = timeSuppressionFactor;
 
-    log.info("Duration {} seconds, Speed {}x, Suppression {}x", duration / 1000, speed, suppressionFactor);
   }
 
   public void generate() {
+    log.info("Duration {} seconds, Speed {}x, Suppression {}x, timeSuppression {}x", duration / 1000, speed, suppressionFactor, timeSuppressionFactor);
+
     try {
       String logdir = System.getProperty("user.home") + "/logs/" + experiment;
       File dir = new File(logdir);
@@ -59,7 +63,7 @@ public class YarnExperiment {
       monitor = new Thread(new WGMonitor(logdir + "/monitor"));
       monitor.start();
 
-      Thread requestGenerator = new Thread(new YarnRequestGenerator("google", rmAddress, myAddress, mustangNM, experiment, duration, speed, suppressionFactor));
+      Thread requestGenerator = new Thread(new YarnRequestGenerator("google", rmAddress, myAddress, mustangNM, experiment, duration, speed, suppressionFactor, timeSuppressionFactor));
       requestGenerator.start();
       requestGenerator.join();
 
@@ -87,7 +91,7 @@ public class YarnExperiment {
 
     long startTime = System.currentTimeMillis();
     while (YarnResponseServer.waitingJobs.size() > 0 &&
-      (System.currentTimeMillis() - startTime) < Constants.WORKLOAD_SIGTERM_WAIT) {
+      (System.currentTimeMillis() - startTime) < 100*Constants.WORKLOAD_SIGTERM_WAIT) {
       try {
         Thread.sleep(Constants.WORKLOAD_SIGTERM_WAIT / 10);
       } catch (InterruptedException e) {
@@ -99,7 +103,21 @@ public class YarnExperiment {
       log.warn("There are still {} jobs waiting.", YarnResponseServer.waitingJobs.size());
     }
 
-    log.info("Shutting down Yarn Experiment");
+    YarnRequestGenerator.responseServerThread.interrupt();
+    try {
+      Thread.sleep(Constants.WORKLOAD_SIGTERM_WAIT);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    try {
+      YarnResponseServer.jobWriter.close();
+      YarnResponseServer.taskWriter.close();
+      log.warn("Shutting up Yarn Experiment");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+
     WorkloadGenerator.terminate = true;
   }
 
@@ -114,7 +132,7 @@ public class YarnExperiment {
       suppression = Double.parseDouble(args[5]) / Double.parseDouble(args[6]);
     }
     String mustangNM = args[7];
-    YarnExperiment yarnExperiment = new YarnExperiment(experiment, rmAddress, myAddress, mustangNM, Integer.parseInt(args[3])*1000, Integer.parseInt(args[4]), suppression);
+    YarnExperiment yarnExperiment = new YarnExperiment(experiment, rmAddress, myAddress, mustangNM, Integer.parseInt(args[3])*1000, Integer.parseInt(args[4]), suppression, Double.parseDouble(args[8]));
     yarnExperiment.generate();
   }
 }
