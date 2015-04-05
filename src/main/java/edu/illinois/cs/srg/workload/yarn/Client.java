@@ -23,11 +23,7 @@ import org.apache.hadoop.yarn.exceptions.YarnException;
 import org.apache.hadoop.yarn.util.ConverterUtils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 
 
 @InterfaceAudience.Public
@@ -45,7 +41,7 @@ public class Client implements Runnable {
   private int amVCores = 0;
   private boolean verbose = false;
   private boolean keepContainers = false;
-  private long clientTimeout = 600000;
+  public long clientTimeout = 600000;
 
   private Configuration conf;
   private YarnClient yarnClient;
@@ -66,7 +62,8 @@ public class Client implements Runnable {
   public static void main(String[] args) {
     Map<Integer, Long> testDurations = Maps.newHashMap();
     testDurations.put(0, new Long(1000));
-    Client client = new Client("192.17.176.12", "192.17.176.11", "192.17.176.14", 1, 1, 0.5, 0.5, testDurations);
+    Client client = new Client(args[0], args[1], "192.17.176.14", 1, 1, 0.5, 0.5, testDurations);
+    client.clientTimeout = Long.parseLong(args[2]);
     client.run();
   }
 
@@ -132,14 +129,14 @@ public class Client implements Runnable {
       amMemory = 1024 + 10*ntasks;
       int maxMem = appResponse.getMaximumResourceCapability().getMemory();
       if (amMemory > maxMem) {
-        LOG.info("AM memory specified above max threshold of cluster. Using max value."
+        LOG.debug("AM memory specified above max threshold of cluster. Using max value."
           + ", specified=" + amMemory
           + ", max=" + maxMem);
         amMemory = maxMem;
       }
       int maxVCores = appResponse.getMaximumResourceCapability().getVirtualCores();
       if (amVCores > maxVCores) {
-        LOG.info("AM virtual cores specified above max threshold of cluster. "
+        LOG.debug("AM virtual cores specified above max threshold of cluster. "
           + "Using max value." + ", specified=" + amVCores
           + ", max=" + maxVCores);
         amVCores = maxVCores;
@@ -189,19 +186,28 @@ public class Client implements Runnable {
       vargs.add(cpu + "");
       vargs.add(memory + "");
       vargs.add(ntasks + "");
-      for (long duration : durations.values()) {
+      // Sort request according in Decreasing order.
+      List<Long> sortedDurations = new ArrayList<Long>(durations.values());
+      Collections.sort(sortedDurations, new Comparator<Long>() {
+        @Override
+        public int compare(Long o1, Long o2) {
+          return -1*Long.compare(o1, o2);
+        }
+      });
+      for (long duration : sortedDurations) {
         vargs.add(duration + "");
         if (duration > clientTimeout) {
           clientTimeout = duration;
         }
       }
+
       vargs.add("1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stdout");
       vargs.add("2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/AppMaster.stderr");
       StringBuilder command = new StringBuilder();
       for (CharSequence str : vargs) {
         command.append(str).append(" ");
       }
-      //LOG.info("AM Command " + command.toString());
+      LOG.debug("AM Command " + command.toString());
       List<String> commands = new ArrayList<String>();
       commands.add(command.toString());
 
@@ -219,17 +225,17 @@ public class Client implements Runnable {
       appContext.setQueue(amQueue);
 
       requestSentTime = System.currentTimeMillis();
-      //LOG.info("Submitting application to ASM");
+      LOG.debug("Submitting application to ASM");
+      YarnResponseServer.waitingJobs.put(jobID, requestSentTime);
       yarnClient.submitApplication(appContext);
 
-      YarnResponseServer.waitingJobs.put(jobID, requestSentTime);
 
       //TODO: should we monitor ?
       if (monitorApplication(appId)) {
-        LOG.info("App {} ran successfully", appId);
+        LOG.debug("App {} ran successfully", appId);
       } else {
         YarnResponseServer.waitingJobs.remove(jobID);
-        LOG.info("App {} Failed.", appId);
+        LOG.error("App {} Failed.", appId);
         if (report != null) {
           report = yarnClient.getApplicationReport(appId);
           LOG.info("Got application report from ASM for"
@@ -264,7 +270,7 @@ public class Client implements Runnable {
   private boolean monitorApplication(ApplicationId appId)
     throws YarnException, IOException {
 
-    LOG.info("App {} timeout - {}", appId, clientTimeout);
+    LOG.debug("App {} timeout - {}", appId, clientTimeout);
     long startTime = System.currentTimeMillis();
     while (true) {
 
@@ -277,7 +283,7 @@ public class Client implements Runnable {
       // Get application report for the appId we are interested in
       report = yarnClient.getApplicationReport(appId);
 
-      /*LOG.info("Got application report from ASM for"
+      LOG.debug("Got application report from ASM for"
         + ", appId=" + appId.getId()
         + ", appDiagnostics=" + report.getDiagnostics()
         + ", appMasterHost=" + report.getHost()
@@ -287,7 +293,7 @@ public class Client implements Runnable {
         + ", yarnAppState=" + report.getYarnApplicationState().toString()
         + ", distributedFinalState=" + report.getFinalApplicationStatus().toString()
         //+ ", appTrackingUrl=" + report.getTrackingUrl()
-        + ", appUser=" + report.getUser());*/
+        + ", appUser=" + report.getUser());
 
       YarnApplicationState state = report.getYarnApplicationState();
       FinalApplicationStatus dsStatus = report.getFinalApplicationStatus();
@@ -310,7 +316,8 @@ public class Client implements Runnable {
       }
 
       if (System.currentTimeMillis() > (startTime + clientTimeout + 10*Constants.TIMEOUT)) {
-        LOG.info("Reached client specified timeout {} seconds for application. Killing application", (clientTimeout + Constants.TIMEOUT) / 1000);
+        LOG.warn("Reached client specified timeout {} seconds. I waited for {} seconds. Killing application",
+          (clientTimeout + 10*Constants.TIMEOUT) / 1000, (System.currentTimeMillis() - startTime)/1000);
         forceKillApplication(appId);
         return false;
       }

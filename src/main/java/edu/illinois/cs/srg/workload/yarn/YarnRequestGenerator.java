@@ -31,6 +31,9 @@ public class YarnRequestGenerator implements Runnable {
   protected String mustangNM;
   protected String experiment;
 
+  long experimentTime;
+  long shutdownTime;
+
   public static Thread responseServerThread;
 
   public YarnRequestGenerator(String name, String rmAddress, String myAddress, String mustangNM, String experiment, long experimentTime, int speed, double suppressionFactor, double timeSuppressionFactor) throws IOException {
@@ -39,6 +42,10 @@ public class YarnRequestGenerator implements Runnable {
     this.myAddress = myAddress;
     this.mustangNM = mustangNM;
     this.experiment = experiment;
+
+    this.experimentTime = experimentTime;
+    //Setting shutdownTime to be 10 % of total time.
+    this.shutdownTime = experimentTime / 10;
 
     player = new GoogleTracePlayer(name, experiment, experimentTime, speed, suppressionFactor, timeSuppressionFactor);
 
@@ -51,6 +58,8 @@ public class YarnRequestGenerator implements Runnable {
   public void run() {
     long startTime = System.currentTimeMillis();
     long nJobs = 0;
+    long nTasks = 0;
+    long nTruncate = 0;
     while (responseServer.errors < AbstractRequestGenerator.MAX_ERROR) {
       ScheduleRequest request = player.getNextJob();
       if (request == null) {
@@ -67,13 +76,21 @@ public class YarnRequestGenerator implements Runnable {
       double cpu = 0;
       double mem = 0;
       for (TaskInfo taskInfo : request.getTasks().values()) {
-        durations.put(index, taskInfo.getDuration());
+        long duration = taskInfo.getDuration();
+        if (duration >  experimentTime + shutdownTime - (System.currentTimeMillis() - startTime)) {
+          //We should truncate the duration.
+          duration = experimentTime + shutdownTime - (System.currentTimeMillis() - startTime);
+          nTruncate++;
+        }
+
+        nTasks++;
+        durations.put(index, duration);
         cpu = taskInfo.getCpu();
         mem = taskInfo.getMemory();
         index++;
 
-        if (taskInfo.getDuration() + System.currentTimeMillis() > YarnExperiment.finishTime) {
-          YarnExperiment.finishTime = taskInfo.getDuration() + System.currentTimeMillis();
+        if (duration + System.currentTimeMillis() > YarnExperiment.finishTime) {
+          YarnExperiment.finishTime = duration + System.currentTimeMillis();
         }
       }
 
@@ -81,7 +98,7 @@ public class YarnRequestGenerator implements Runnable {
       client.start();
 
     }
-    log.info("YarnRequestGenerator: created {} jobs in {} seconds", nJobs, (System.currentTimeMillis() - startTime)/1000);
+    log.info("YarnRequestGenerator: created {} jobs, {} tasks in {} seconds. Truncated durations for {} tasks.", nJobs, nTasks, (System.currentTimeMillis() - startTime)/1000, nTruncate);
     log.info("YarnRequestGenerator: Time to finish is less than {} seconds", (YarnExperiment.finishTime - System.currentTimeMillis())/1000);
     /*try {
       Thread.sleep(2* Constants.TIMEOUT);

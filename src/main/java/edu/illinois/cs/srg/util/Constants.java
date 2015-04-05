@@ -29,7 +29,7 @@ public class Constants {
   public static final long STATS_INTERVAL = 1000;
   public static final int SIGTERM = -1;
 
-  public static final long MONITOR_INTERVAL = 3000;
+  public static final long MONITOR_INTERVAL = 1000;
 
   public static final int CONS_LESSER = 2;
   public static final int CONS_GREATER = 3;
