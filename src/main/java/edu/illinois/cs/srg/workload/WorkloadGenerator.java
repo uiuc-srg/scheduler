@@ -3,6 +3,7 @@ package edu.illinois.cs.srg.workload;
 import edu.illinois.cs.srg.serializables.ScheduleRequest;
 import edu.illinois.cs.srg.util.Constants;
 import edu.illinois.cs.srg.workload.google.GoogleRequestGenerator;
+import edu.illinois.cs.srg.workload.yarn.YarnMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +102,7 @@ public class WorkloadGenerator {
 
 
 
+  // args - exp schedulerAddress duration speed resourceSup resourceSup timeSup
   public static void main(String args[])  {
     log.info("Starting WorkloadGenerator.");
     String schedulerAddress = "127.0.0.1";
@@ -112,7 +114,7 @@ public class WorkloadGenerator {
       suppression = Double.parseDouble(args[4]) / Double.parseDouble(args[5]);
     }
     double timeSuppressionFactor = 1.0;
-    if (args.length > 5) {
+    if (args.length > 6) {
       timeSuppressionFactor = Double.parseDouble(args[6]);
     }
     WorkloadGenerator generator = new WorkloadGenerator(args[0], schedulerAddress, Integer.parseInt(args[2])*1000, Integer.parseInt(args[3]), suppression, timeSuppressionFactor);

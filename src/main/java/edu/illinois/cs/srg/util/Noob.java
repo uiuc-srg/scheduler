@@ -2,7 +2,7 @@ package edu.illinois.cs.srg.util;
 
 import java.lang.management.ManagementFactory;
 import java.text.DecimalFormat;
-import java.util.Arrays;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -34,7 +34,19 @@ public class Noob {
     String parts[] = str.split(", ", -1);
     System.out.print(Arrays.toString(parts));*/
 
-    System.out.println("" + (6000 % 6000));
+    //System.out.println("" + (6000 % 6000));
+    List<Long> sortedDurations = new ArrayList<Long>();
+    sortedDurations.add((long) 9000);
+    sortedDurations.add((long) 3000);
+    sortedDurations.add((long) 9000);
+    System.out.println(sortedDurations);
+    Collections.sort(sortedDurations, new Comparator<Long>() {
+      @Override
+      public int compare(Long o1, Long o2) {
+        return -1*Long.compare(o1, o2);
+      }
+    });
+    System.out.println(sortedDurations);
   }
 
   static class Task implements Runnable {

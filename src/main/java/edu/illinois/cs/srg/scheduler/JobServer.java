@@ -1,12 +1,14 @@
 package edu.illinois.cs.srg.scheduler;
 
 import com.google.common.collect.Maps;
+import edu.illinois.cs.srg.scheduler.jobHandlers.AbstractJobHandler;
 import edu.illinois.cs.srg.scheduler.jobHandlers.BasicJobHandler;
 import edu.illinois.cs.srg.scheduler.jobHandlers.ConsistentClusterStateJobHandler;
 import edu.illinois.cs.srg.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Map;
@@ -44,7 +46,7 @@ public class JobServer implements Runnable {
         Debugger.addRequest();
 
         // fixed-paths
-       /*AbstractJobHandler jobHandler = new BasicJobHandler(clusterState, connectionSocket);
+       /*AbstractJobHandler jobHandler = new ConsistentClusterStateJobHandler(clusterState, connectionSocket);
         try {
           service.execute(jobHandler);
         } catch (Exception e) {

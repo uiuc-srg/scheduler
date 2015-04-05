@@ -42,6 +42,7 @@ public class SchedulerMonitor extends Monitor {
     double memoryStats = 100 * (usage / memoryMXBean.getHeapMemoryUsage().getMax());
     long threadStats = threadMXBean.getThreadCount();
     double load = operatingSystemMXBean.getSystemLoadAverage();
+    //(1)time (2)heap_memory_percent (3)#threads (4)load (5)total_nodes (6)total_requests (7)timeouts (8)failed_requests
     return (System.currentTimeMillis() - startTime)/1000 + ", " + formatter.format(memoryStats) + ", " + threadStats + ", " + load + ", " + Debugger.totalNodes + ", " + Debugger.totalRequests + ", " + timeouts + ", " + failedAttempts + "\n";
   }
 

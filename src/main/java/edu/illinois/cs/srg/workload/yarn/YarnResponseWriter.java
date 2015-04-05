@@ -39,7 +39,7 @@ public class YarnResponseWriter implements Runnable {
       outputStream.close();
       inputStream.close();
       socket.close();
-      log.info("{}: Got Response {}", this, response);
+      //log.info("{}: Got Response {}", this, response);
       long receiveTime = System.currentTimeMillis();
       // find sent time and call write
       Long sentTime = YarnResponseServer.waitingJobs.remove(response.jobID);
@@ -69,13 +69,17 @@ public class YarnResponseWriter implements Runnable {
       allTasksGotContainers = false;
     }
     if (response.getContainerAllocationTimes().size() != response.getContainerStartTimes().size()
+      //|| response.getContainerAllocationTimes().size() != response.getContainerStopTimes().size()
+      || response.getContainerAllocationTimes().size() != response.getContainerCompletionTime().size()
       || response.getContainerAllocationTimes().size() != response.getResults().size()) {
-      log.warn("Completion problem: {}: ntasks {}, allocationTimeSize {}, startTimeSize {}, resultTimeSize {}",
+      log.warn("Completion problem: {}: ntasks {}, allocationTimeSize {}, startTimeSize {}, stopTimeSize {}, completionTimeSize {}, resultTimeSize {}",
         this, response.getNtasks(), response.getContainerAllocationTimes().size(),
-        response.getContainerStartTimes().size(), response.getResults().size());
+        response.getContainerStartTimes().size(), response.getContainerStopTimes().size(), response.getContainerCompletionTime().size(), response.getResults().size());
     }
     long maxContainerAllocationTime = JobThread.maxTime(response.getContainerAllocationTimes());
     long maxContainerStartTime = JobThread.maxTime(response.getContainerStartTimes());
+    long maxContainerCompletionTime = JobThread.maxTime(response.getContainerCompletionTime());
+    long maxDuration = JobThread.maxTime(response.getDurations());
     boolean result = JobThread.andResult(response.getResults()) && response.getResult() && allTasksGotContainers;
 
     String job = new StringBuilder(
@@ -87,7 +91,9 @@ public class YarnResponseWriter implements Runnable {
       .append(maxContainerAllocationTime + ", ")
       .append(maxContainerStartTime + ", ")
       .append(receiveTime +", ")
-      .append(result)
+      .append(result + ", ")
+      .append(maxContainerCompletionTime + ", ")
+      .append(maxDuration)
       .toString();
 
     Map<Integer, String> tasks = Maps.newHashMap();
@@ -100,6 +106,14 @@ public class YarnResponseWriter implements Runnable {
       if (response.getResults().containsKey(index)) {
         taskResult = response.getResults().get(index);
       }
+      long containerCompletionTime = 0;
+      if (response.getContainerCompletionTime().containsKey(index)) {
+        containerCompletionTime = response.getContainerCompletionTime().get(index);
+      }
+      long taskDuration = 0;
+      if (response.getDurations().containsKey(index)) {
+        taskDuration = response.getDurations().get(index);
+      }
       String task = new StringBuilder(
         response.getJobID() + ", ")
         .append(index + ", ")
@@ -109,7 +123,9 @@ public class YarnResponseWriter implements Runnable {
         .append(response.getContainerAllocationTimes().get(index) + ", ")
         .append(containerStartTime + ", ")
         .append(receiveTime + ", ")
-        .append(taskResult)
+        .append(taskResult + ", ")
+        .append(containerCompletionTime + ", ")
+        .append(taskDuration)
         .toString();
 
       tasks.put(index, task);

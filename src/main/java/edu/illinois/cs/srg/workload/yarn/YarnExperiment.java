@@ -1,7 +1,6 @@
 package edu.illinois.cs.srg.workload.yarn;
 
 import edu.illinois.cs.srg.util.Constants;
-import edu.illinois.cs.srg.workload.WGMonitor;
 import edu.illinois.cs.srg.workload.WorkloadGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +59,7 @@ public class YarnExperiment {
       File dir = new File(logdir);
       dir.mkdirs();
 
-      monitor = new Thread(new WGMonitor(logdir + "/monitor"));
+      monitor = new Thread(new YarnMonitor(logdir + "/monitor", rmAddress));
       monitor.start();
 
       Thread requestGenerator = new Thread(new YarnRequestGenerator("google", rmAddress, myAddress, mustangNM, experiment, duration, speed, suppressionFactor, timeSuppressionFactor));
@@ -78,6 +77,7 @@ public class YarnExperiment {
 
   public void exit() {
     // Make sure we have received all responses. Wait maximum for 10 minutes (10*speed minutes).
+    long exitStartTime = System.currentTimeMillis();
     while (YarnResponseServer.waitingJobs.size() > 0 &&
       YarnExperiment.finishTime > System.currentTimeMillis()) {
       try {
@@ -89,19 +89,22 @@ public class YarnExperiment {
       }
     }
 
+    // lets wait for 30 minutes more - 2*10^6 millis.
     long startTime = System.currentTimeMillis();
     while (YarnResponseServer.waitingJobs.size() > 0 &&
-      (System.currentTimeMillis() - startTime) < 100*Constants.WORKLOAD_SIGTERM_WAIT) {
+      (System.currentTimeMillis() - startTime) < 200*Constants.WORKLOAD_SIGTERM_WAIT) {
       try {
         Thread.sleep(Constants.WORKLOAD_SIGTERM_WAIT / 10);
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
     }
+    log.warn("I waited for an extra {} seconds. Proceeding to shut down.", (System.currentTimeMillis() - exitStartTime) / 1000);
+    log.warn("There are {} jobs waiting for responses.", YarnResponseServer.waitingJobs.size());
 
-    if (YarnResponseServer.waitingJobs.size() > 0) {
-      log.warn("There are still {} jobs waiting.", YarnResponseServer.waitingJobs.size());
-    }
+    //if (YarnResponseServer.waitingJobs.size() > 0) {
+      //log.warn("There are still {} jobs waiting.", YarnResponseServer.waitingJobs.size());
+    //}
 
     YarnRequestGenerator.responseServerThread.interrupt();
     try {
